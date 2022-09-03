@@ -19,6 +19,7 @@ namespace GeofenceServer
         //Used to separate the request type, user data,
         //location and other passed data from a received string message
         public const char COMM_SEPARATOR = '■';
+        public const char USER_SEPARATOR = '√';
 
         //handleMsg cases
         private const string LOGIN = "LOGIN";
@@ -45,7 +46,8 @@ namespace GeofenceServer
             {
                 using (TargetUserDbContext userdbContext = new TargetUserDbContext())
                 {
-                    string email = message[1];
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string email = userString[0];
                     var res = from users in userdbContext.Users
                               where users.Email == email
                               select users;
@@ -60,7 +62,7 @@ namespace GeofenceServer
                         {
                             user = us;
                         }
-                        string password = message[3].Split('\0')[0];
+                        string password = userString[2];
                         string passwordHash = new CryptoHashHelper().GetHash(password);
                         if (user.PasswordHash != passwordHash)
                         {
@@ -77,7 +79,8 @@ namespace GeofenceServer
             {
                 using (TargetUserDbContext userDbContext = new TargetUserDbContext())
                 {
-                    string mail = message[1];
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string mail = userString[0];
                     var matches = from u in userDbContext.Users
                                   where u.Email == mail
                                   select u;
@@ -88,10 +91,10 @@ namespace GeofenceServer
                     else
                     {
                         CryptoHashHelper crypto = new CryptoHashHelper();
-                        message[3] = crypto.GetHash(message[3]);
-                        TargetUser user = new TargetUser(message[1],
-                            message[2],
-                            message[3]);
+                        userString[2] = crypto.GetHash(userString[2]);
+                        TargetUser user = new TargetUser(userString[0],
+                            userString[1],
+                            userString[2]);
                         userDbContext.Users.Add(user);
                         userDbContext.SaveChanges();
                         return REGISTERED;
@@ -102,15 +105,16 @@ namespace GeofenceServer
 			{
                 using (TargetUserDbContext userDbContext = new TargetUserDbContext())
                 {
-                    string mail = message[1];
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string mail = userString[0];
                     var matches = from u in userDbContext.Users
                                   where u.Email == mail
                                   select u;
                     if (matches.Any())
                     {
-                        TargetUser newUser = new TargetUser(message[1],
-                            message[2],
-                            message[3]);
+                        TargetUser newUser = new TargetUser(userString[0],
+                            userString[1],
+                            userString[2]);
                         TargetUser oldUser = new TargetUser();
                         foreach (TargetUser u in matches)
                         {
@@ -131,13 +135,21 @@ namespace GeofenceServer
             {
                 using (TargetUserDbContext tuDbContext = new TargetUserDbContext())
                 {
-                    string mail = message[1];
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string locationString = message[2];
+                    string mail = userString[0];
                     var matches = from u in tuDbContext.Users
                                   where u.Email == mail
                                   select u;
                     if (matches.Any())
                     {
-                        matches.First().LocationHistory = message[4];
+                        TargetUser user =  matches.First();
+                        if (new CryptoHashHelper().GetHash(userString[2]) != user.PasswordHash)
+						{
+                            return WRONG_PASSWORD;
+						}
+                        user.LocationHistory = LocationHandler.AddLocation(user.LocationHistory, locationString);
+                        tuDbContext.SaveChanges();
                         return LOCATION_UPDATED;
                     }
                     else
@@ -198,6 +210,7 @@ namespace GeofenceServer
                             Trace.TraceError("Buffer overflow while reading from socket.");
                         }
                         String msg = Encoding.UTF8.GetString(rawMsg);
+                        msg = msg.Split('\0')[0];
                         if (bCount > 0)
                         {
                             Console.WriteLine("Client: " + msg);
