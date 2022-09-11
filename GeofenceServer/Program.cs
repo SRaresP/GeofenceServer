@@ -26,6 +26,7 @@ namespace GeofenceServer
         private const string REGISTER = "REGISTER";
         private const string EDIT = "EDIT";
         private const string LOCATION_UPDATE = "LOCATION_UPDATE";
+        private const string GET_UNIQUE_CODE = "GET_UNIQUE_CODE";
 
         //handleMsg results
         //positive
@@ -33,6 +34,7 @@ namespace GeofenceServer
         private const string REGISTERED = "REGISTERED";
         private const string EDITED = "EDITED";
         private const string LOCATION_UPDATED = "LOCATION_UPDATED";
+        private const string DELIVERED_CODE = "DELIVERED_CODE";
         //negative
         private const string NOT_FOUND = "NOT_FOUND";
         private const string WRONG_PASSWORD = "WRONG_PASSWORD";
@@ -112,14 +114,16 @@ namespace GeofenceServer
                                   select u;
                     if (matches.Any())
                     {
-                        TargetUser newUser = new TargetUser(userString[0],
-                            userString[1],
-                            userString[2]);
                         TargetUser oldUser = new TargetUser();
                         foreach (TargetUser u in matches)
                         {
                             oldUser = u;
                         }
+                        TargetUser newUser = new TargetUser(userString[0],
+                            userString[1],
+                            userString[2],
+                            oldUser.NrOfCodeGenerations,
+                            oldUser.LocationHistory);
                         userDbContext.Users.Remove(oldUser);
                         userDbContext.Users.Add(newUser);
                         userDbContext.SaveChanges();
@@ -158,6 +162,35 @@ namespace GeofenceServer
                     }
                 }
             }
+            public static string GetUniqueCode(string[] message)
+            {
+                using (TargetUserDbContext tuDbContext = new TargetUserDbContext())
+                {
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string mail = userString[0];
+                    var matches = from u in tuDbContext.Users
+                                  where u.Email == mail
+                                  select u;
+                    if (matches.Any())
+                    {
+                        TargetUser user = matches.First();
+                        if (new CryptoHashHelper().GetHash(userString[2]) != user.PasswordHash)
+                        {
+                            return WRONG_PASSWORD;
+                        }
+                        mail += user.NrOfCodeGenerations;
+                        int code = Math.Abs(mail.GetHashCode() % 100000000);
+                        ++user.NrOfCodeGenerations;
+                        tuDbContext.SaveChanges();
+                        String toReturn = DELIVERED_CODE + COMM_SEPARATOR + code;
+                        return toReturn;
+                    }
+                    else
+                    {
+                        return NOT_FOUND;
+                    }
+                }
+            }
 		}
 
         private static String handleMsg(String msg)
@@ -173,6 +206,8 @@ namespace GeofenceServer
                     return Case.Edit(message);
                 case LOCATION_UPDATE:
                     return Case.LocationUpdate(message);
+                case GET_UNIQUE_CODE:
+                    return Case.GetUniqueCode(message);
                 default:
                     return UNDEFINED_CASE;
             }
@@ -180,7 +215,7 @@ namespace GeofenceServer
 
         private static void sendResponse(String msg)
         {
-            byte[] bytesMsgRaspuns = Encoding.ASCII.GetBytes(msg);
+            byte[] bytesMsgRaspuns = Encoding.UTF8.GetBytes(msg);
             workerSocket.Send(bytesMsgRaspuns);
         }
 

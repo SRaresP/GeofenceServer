@@ -21,12 +21,14 @@ namespace GeofenceServer.Data
         [Required(AllowEmptyStrings = false, ErrorMessage = "Password hash missing while manipulating database", ErrorMessageResourceName = "PasswordHash")]
         public string PasswordHash { get; set; }
         public string LocationHistory { get; set; }
+        public int NrOfCodeGenerations { get; set; }
 
-        public TargetUser(string Email, string Name, string PasswordHash, string LocationHistory = "")
+        public TargetUser(string Email, string Name, string PasswordHash, int nrOfCodeGenerations = 0, string LocationHistory = "")
         {
             this.Email = Email;
             this.Name = Name;
             this.PasswordHash = PasswordHash;
+            this.NrOfCodeGenerations = nrOfCodeGenerations;
             this.LocationHistory = LocationHistory;
         }
 

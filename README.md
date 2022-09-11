@@ -3,7 +3,9 @@ The server that stores and retrieves information related to accounts and locatio
 
 ## Todo
 
-Implement registration and login for targets and overseers.
+Implement registration and login for overseers.
+
+Implement proper hashing for unique codes.
 
 ## Done
 
