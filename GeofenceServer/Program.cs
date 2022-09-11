@@ -182,7 +182,7 @@ namespace GeofenceServer
                         int code = Math.Abs(mail.GetHashCode() % 100000000);
                         ++user.NrOfCodeGenerations;
                         tuDbContext.SaveChanges();
-                        String toReturn = DELIVERED_CODE + COMM_SEPARATOR + code;
+                        string toReturn = DELIVERED_CODE + COMM_SEPARATOR + code;
                         return toReturn;
                     }
                     else
