@@ -8,17 +8,17 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 
-namespace ServerExemplu.Data
+namespace GeofenceServer.Data
 {
-	class TargetCodeHandler
+	public class TargetCodeHandler
 	{
 		private class TargetCode
 		{
 			[Key]
 			[Required(AllowEmptyStrings = false, ErrorMessage = "Email missing while manipulating database", ErrorMessageResourceName = "Email")]
 			[MaxLength(50, ErrorMessage = "Email adress was over 50 characters.")]
-			public string Email;
-			public int Code;
+			public string Email { get; set; }
+			public int Code { get; set; }
 
 			public TargetCode() {
 				Email = "";
@@ -47,8 +47,9 @@ namespace ServerExemplu.Data
 				{
 					using (TargetCodeDbContext targetCodeDbContext = new TargetCodeDbContext())
 					{
+						targetCodeDbContext.Entries.Attach(TargetCode);
 						targetCodeDbContext.Entries.Remove(TargetCode);
-						targetCodeDbContext.SaveChangesAsync();
+						targetCodeDbContext.SaveChanges();
 					}
 				}
 				catch (Exception ex)
@@ -77,31 +78,55 @@ namespace ServerExemplu.Data
 					{
 						targetCodeDbContext.Entries.Remove(entry);
 					}
-					targetCodeDbContext.SaveChangesAsync();
+					targetCodeDbContext.SaveChanges();
 				}
 			} catch (Exception e)
 			{
 				Trace.TraceError(e.Message);
 			}
 		}
-		public static void Add(string email, int code)
+		public static int Get(TargetUser user)
 		{
+			int code = -1;
 			try
 			{
 				using (TargetCodeDbContext targetCodeDbContext = new TargetCodeDbContext())
+				using (TargetUserDbContext targetUserDbContext = new TargetUserDbContext())
 				{
-					TargetCode newEntry = new TargetCode(email, code);
+					var res = from codes in targetCodeDbContext.Entries
+							  where codes.Email == user.Email
+							  select codes;
+					int count = res.Count();
+					if (count != 0)
+					{
+						foreach (TargetCode targetCode in res)
+						{
+							targetCodeDbContext.Entries.Remove(targetCode);
+						}
+						targetCodeDbContext.SaveChanges();
+					}
+					string toHash = user.Email + user.NrOfCodeGenerations;
+					//get an 8 digit code
+					code = Math.Abs(toHash.GetHashCode() % 100000000);
+					targetUserDbContext.Users.Attach(user);
+					++user.NrOfCodeGenerations;
+					targetUserDbContext.SaveChanges();
+
+					TargetCode newEntry = new TargetCode(user.Email, code);
 					targetCodeDbContext.Entries.Add(newEntry);
 					//1.800.000 miliseconds = 30 minutes
-					DeletionTimer timer = new DeletionTimer(10000, newEntry);
+					DeletionTimer timer = new DeletionTimer(5000, newEntry);
 					timer.Elapsed += timer.DeleteEntry;
 					timer.AutoReset = false;
-					targetCodeDbContext.SaveChangesAsync();
+					targetCodeDbContext.SaveChanges();
+					timer.Start();
 				}
+				return code;
 			}
 			catch (Exception e)
 			{
 				Trace.TraceError(e.Message);
+				return code;
 			}
 		}
 		public static string Validate(int code)

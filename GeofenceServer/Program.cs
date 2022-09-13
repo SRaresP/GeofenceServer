@@ -178,12 +178,7 @@ namespace GeofenceServer
                         {
                             return WRONG_PASSWORD;
                         }
-                        mail += user.NrOfCodeGenerations;
-                        int code = Math.Abs(mail.GetHashCode() % 100000000);
-                        ++user.NrOfCodeGenerations;
-                        tuDbContext.SaveChanges();
-                        string toReturn = DELIVERED_CODE + COMM_SEPARATOR + code;
-                        return toReturn;
+                        return DELIVERED_CODE + COMM_SEPARATOR + TargetCodeHandler.Get(user);
                     }
                     else
                     {
@@ -225,6 +220,8 @@ namespace GeofenceServer
             mainSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             mainSocket.Bind(new IPEndPoint(IPAddress.Any, PORT));
             mainSocket.Listen(10);
+
+            TargetCodeHandler.Clear();
 
             while (shouldRun)
             {

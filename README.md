@@ -12,3 +12,5 @@ Implement proper hashing for unique codes.
 Server scaffolding is done, now only lacks implementation and polish.
 
 Can currently receive and send data to TargetApp.
+
+Implemented unique code generation, automatic removal and validation.
