@@ -12,19 +12,22 @@ namespace GeofenceServer.Data
 {
 	public class TargetCodeHandler
 	{
+		private static readonly int CODE_LENGTH = 8;
 		private class TargetCode
 		{
 			[Key]
 			[Required(AllowEmptyStrings = false, ErrorMessage = "Email missing while manipulating database", ErrorMessageResourceName = "Email")]
 			[MaxLength(50, ErrorMessage = "Email adress was over 50 characters.")]
 			public string Email { get; set; }
-			public int Code { get; set; }
+			//THIS # IS SUPPOSED TO BE CODE_LENGTH
+			[MaxLength(8, ErrorMessage = "Code was longer than the specified length")]
+			public string Code { get; set; }
 
 			public TargetCode() {
 				Email = "";
-				Code = -1;
+				Code = "-1";
 			}
-			public TargetCode(string email, int code)
+			public TargetCode(string email, string code)
 			{
 				Email = email;
 				Code = code;
@@ -66,6 +69,7 @@ namespace GeofenceServer.Data
 			public DuplicateCodesException(string message, Exception innerException) : base(message, innerException) { }
 			public DuplicateCodesException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
 		}
+		private static CryptoHashHelper Crypto = new CryptoHashHelper();
 		public static void Clear()
 		{
 			try
@@ -85,9 +89,9 @@ namespace GeofenceServer.Data
 				Trace.TraceError(e.Message);
 			}
 		}
-		public static int Get(TargetUser user)
+		public static string Get(TargetUser user)
 		{
-			int code = -1;
+			string code = "-1";
 			try
 			{
 				using (TargetCodeDbContext targetCodeDbContext = new TargetCodeDbContext())
@@ -106,8 +110,7 @@ namespace GeofenceServer.Data
 						targetCodeDbContext.SaveChanges();
 					}
 					string toHash = user.Email + user.NrOfCodeGenerations;
-					//get an 8 digit code
-					code = Math.Abs(toHash.GetHashCode() % 100000000);
+					code = Crypto.GetHash(toHash).Substring(0, CODE_LENGTH).ToUpper();
 					targetUserDbContext.Users.Attach(user);
 					++user.NrOfCodeGenerations;
 					targetUserDbContext.SaveChanges();
@@ -136,7 +139,7 @@ namespace GeofenceServer.Data
 				using (TargetCodeDbContext targetCodeDbContext = new TargetCodeDbContext())
 				{
 					var res = from entries in targetCodeDbContext.Entries
-							  where entries.Code == code
+							  where entries.Code.Equals(code)
 							  select entries;
 					int resultAmount = res.Count();
 					switch (resultAmount)
