@@ -3,11 +3,17 @@ The server that stores and retrieves information related to accounts and locatio
 
 ## Todo
 
+Give the targets their user name when they log in. Consider the location history too.
+
 Fix the problem that causes the server to stop working in certain cases.
 
-Implement registration and login for overseers.
+## Done.
 
-## Done
+Overseers can now register and log in. They get their tracked users when they log in as well.
+
+Separated Target handling from Overseer handling
+
+Implemented unique code deletion upon successful usage.
 
 Server scaffolding is done, now only lacks implementation and polish.
 

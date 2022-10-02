@@ -147,6 +147,8 @@ namespace GeofenceServer.Data
 						case 0:
 							return null;
 						case 1:
+							targetCodeDbContext.Entries.Remove(res.First());
+							targetCodeDbContext.SaveChangesAsync();
 							return res.First().Email;
 						default:
 							foreach(TargetCode entry in res)
@@ -154,7 +156,7 @@ namespace GeofenceServer.Data
 								targetCodeDbContext.Entries.Remove(entry);
 							}
 							targetCodeDbContext.SaveChangesAsync();
-							throw new DuplicateCodesException("Found duplicate codes in database. Attempted to delete both of them.");
+							throw new DuplicateCodesException("Found duplicate codes in database. Attempted to delete all of them.");
 					}
 				}
 			}

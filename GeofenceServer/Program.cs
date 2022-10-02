@@ -22,11 +22,15 @@ namespace GeofenceServer
         public const char USER_SEPARATOR = '√';
 
         //handleMsg cases
-        private const string LOGIN = "LOGIN";
-        private const string REGISTER = "REGISTER";
-        private const string EDIT = "EDIT";
-        private const string LOCATION_UPDATE = "LOCATION_UPDATE";
-        private const string GET_UNIQUE_CODE = "GET_UNIQUE_CODE";
+        private const string LOGIN_TARGET = "LOGIN_TARGET";
+        private const string LOGIN_OVERSEER = "LOGIN_OVERSEER";
+        private const string REGISTER_TARGET = "REGISTER_TARGET";
+        private const string REGISTER_OVERSEER = "REGISTER_OVERSEER";
+        private const string EDIT_TARGET = "EDIT_TARGET";
+        private const string EDIT_OVERSEER = "EDIT_OVERSEER";
+        private const string LOCATION_UPDATE_TARGET = "LOCATION_UPDATE_TARGET";
+        private const string GET_UNIQUE_CODE_TARGET = "GET_UNIQUE_CODE_TARGET";
+        private const string GET_LOCATION_HISTORY = "GET_LOCATION_HISTORY";
 
         //handleMsg results
         //positive
@@ -35,6 +39,7 @@ namespace GeofenceServer
         private const string EDITED = "EDITED";
         private const string LOCATION_UPDATED = "LOCATION_UPDATED";
         private const string DELIVERED_CODE = "DELIVERED_CODE";
+        private const string GOT_LOCATION_HISTORY = "GOT_LOCATION_HISTORY";
         //negative
         private const string NOT_FOUND = "NOT_FOUND";
         private const string WRONG_PASSWORD = "WRONG_PASSWORD";
@@ -44,7 +49,7 @@ namespace GeofenceServer
 
         private class Case
 		{
-            public static string Login(string[] message)
+            public static string LoginTarget(string[] message)
             {
                 using (TargetUserDbContext userdbContext = new TargetUserDbContext())
                 {
@@ -77,7 +82,40 @@ namespace GeofenceServer
                     }
                 }
             }
-            public static string Register(string[] message)
+            public static string LoginOverseer(string[] message)
+            {
+                using (OverseerUserDbContext userdbContext = new OverseerUserDbContext())
+                {
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string email = userString[0];
+                    var res = from users in userdbContext.Users
+                              where users.Email == email
+                              select users;
+                    if (!res.Any())
+                    {
+                        return NOT_FOUND;
+                    }
+                    else
+                    {
+                        OverseerUser user = new OverseerUser();
+                        foreach (OverseerUser us in res)
+                        {
+                            user = us;
+                        }
+                        string password = userString[2];
+                        string passwordHash = new CryptoHashHelper().GetHash(password);
+                        if (user.PasswordHash != passwordHash)
+                        {
+                            return WRONG_PASSWORD;
+                        }
+                        else
+                        {
+                            return LOGGED_IN + COMM_SEPARATOR + user.Name + USER_SEPARATOR + user.TrackedUserIDs;
+                        }
+                    }
+                }
+            }
+            public static string RegisterTarget(string[] message)
             {
                 using (TargetUserDbContext userDbContext = new TargetUserDbContext())
                 {
@@ -103,7 +141,33 @@ namespace GeofenceServer
                     }
                 }
             }
-            public static string Edit(string[] message)
+            public static string RegisterOverseer(string[] message)
+            {
+                using (OverseerUserDbContext userDbContext = new OverseerUserDbContext())
+                {
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string mail = userString[0];
+                    var matches = from u in userDbContext.Users
+                                  where u.Email == mail
+                                  select u;
+                    if (matches.Any())
+                    {
+                        return EMAIL_ALREADY_TAKEN;
+                    }
+                    else
+                    {
+                        CryptoHashHelper crypto = new CryptoHashHelper();
+                        userString[2] = crypto.GetHash(userString[2]);
+                        OverseerUser user = new OverseerUser(userString[0],
+                            userString[1],
+                            userString[2]);
+                        userDbContext.Users.Add(user);
+                        userDbContext.SaveChanges();
+                        return REGISTERED;
+                    }
+                }
+            }
+            public static string EditTarget(string[] message)
 			{
                 using (TargetUserDbContext userDbContext = new TargetUserDbContext())
                 {
@@ -135,7 +199,37 @@ namespace GeofenceServer
                     }
                 }
             }
-            public static string LocationUpdate(string[] message)
+            public static string EditOverseer(string[] message)
+            {
+                using (OverseerUserDbContext userDbContext = new OverseerUserDbContext())
+                {
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string mail = userString[0];
+                    var matches = from u in userDbContext.Users
+                                  where u.Email == mail
+                                  select u;
+                    if (matches.Any())
+                    {
+                        OverseerUser oldUser = new OverseerUser();
+                        foreach (OverseerUser u in matches)
+                        {
+                            oldUser = u;
+                        }
+                        OverseerUser newUser = new OverseerUser(userString[0],
+                            userString[1],
+                            userString[2]);
+                        userDbContext.Users.Remove(oldUser);
+                        userDbContext.Users.Add(newUser);
+                        userDbContext.SaveChanges();
+                        return EDITED;
+                    }
+                    else
+                    {
+                        return NOT_FOUND;
+                    }
+                }
+            }
+            public static string LocationUpdateTarget(string[] message)
             {
                 using (TargetUserDbContext tuDbContext = new TargetUserDbContext())
                 {
@@ -162,7 +256,7 @@ namespace GeofenceServer
                     }
                 }
             }
-            public static string GetUniqueCode(string[] message)
+            public static string GetUniqueCodeTarget(string[] message)
             {
                 using (TargetUserDbContext tuDbContext = new TargetUserDbContext())
                 {
@@ -186,35 +280,68 @@ namespace GeofenceServer
                     }
                 }
             }
+            public static string GetLocationHistory(string[] message)
+			{
+                string loginResult = LoginOverseer(message);
+                if (loginResult != LOGGED_IN)
+				{
+                    return loginResult;
+				}
+
+                int id = int.Parse(message[2]);
+
+                using (TargetUserDbContext targetUserDbContext = new TargetUserDbContext())
+                {
+                    var res = from users in targetUserDbContext.Users
+                              where users.Id == id
+                              select users;
+                    if (!res.Any())
+                    {
+                        return NOT_FOUND;
+                    }
+
+                    TargetUser targetUser = res.First();
+
+                    return GOT_LOCATION_HISTORY + COMM_SEPARATOR + targetUser.Id + USER_SEPARATOR + targetUser.Name + USER_SEPARATOR + targetUser.LocationHistory;
+                }
+            }
 		}
 
-        private static String handleMsg(String msg)
+        private static String ProcessRequest(String msg)
         {
             string[] message = msg.Split(Program.COMM_SEPARATOR);
             switch (message[0])
             {
-                case LOGIN:
-                    return Case.Login(message);
-                case REGISTER:
-                    return Case.Register(message);
-                case EDIT:
-                    return Case.Edit(message);
-                case LOCATION_UPDATE:
-                    return Case.LocationUpdate(message);
-                case GET_UNIQUE_CODE:
-                    return Case.GetUniqueCode(message);
+                case LOGIN_TARGET:
+                    return Case.LoginTarget(message);
+                case LOGIN_OVERSEER:
+                    return Case.LoginOverseer(message);
+                case REGISTER_TARGET:
+                    return Case.RegisterTarget(message);
+                case REGISTER_OVERSEER:
+                    return Case.RegisterOverseer(message);
+                case EDIT_TARGET:
+                    return Case.EditTarget(message);
+                case EDIT_OVERSEER:
+                    return Case.EditOverseer(message);
+                case LOCATION_UPDATE_TARGET:
+                    return Case.LocationUpdateTarget(message);
+                case GET_UNIQUE_CODE_TARGET:
+                    return Case.GetUniqueCodeTarget(message);
+                case GET_LOCATION_HISTORY:
+                    return Case.GetLocationHistory(message);
                 default:
                     return UNDEFINED_CASE;
             }
         }
 
-        private static void sendResponse(String msg)
+        private static void SendResponse(string msg)
         {
             byte[] bytesMsgRaspuns = Encoding.UTF8.GetBytes(msg);
             workerSocket.Send(bytesMsgRaspuns);
         }
 
-        public static void Main(String[] args)
+        public static void Main(string[] args)
         {
             bool shouldRun = true;
             mainSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -227,32 +354,38 @@ namespace GeofenceServer
             {
                 try
                 {
+                    //listen for a connection and accept it
                     workerSocket = mainSocket.Accept();
                     if (workerSocket == null)
                     {
                         return;
                     }
-                    Console.WriteLine("Accepted connection from: " + workerSocket.RemoteEndPoint);
+                    Console.WriteLine("\nAccepted connection from: " + workerSocket.RemoteEndPoint);
                     byte[] rawMsg = new byte[BUFFER_SIZE];
                     try
                     {
+                        //read and check message
                         int bCount = workerSocket.Receive(rawMsg);
                         if (bCount > BUFFER_SIZE)
                         {
                             Trace.TraceError("Buffer overflow while reading from socket.");
                         }
-                        String msg = Encoding.UTF8.GetString(rawMsg);
+                        string msg = Encoding.UTF8.GetString(rawMsg);
+                        //process message and send a response
                         msg = msg.Split('\0')[0];
                         if (bCount > 0)
                         {
-                            Console.WriteLine("Client: " + msg);
-                            string response = handleMsg(msg);
-                            sendResponse(response);
+                            string[] splitMsg = msg.Split(COMM_SEPARATOR);
+                            string request = splitMsg[0];
+                            string from = splitMsg[1].Split(USER_SEPARATOR)[0];
+                            Console.WriteLine("Request: " + request + " from:" + from);
+                            string response = ProcessRequest(msg);
+                            SendResponse(response);
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine(ex.Message);
+                        Trace.TraceError(ex.Message);
                     }
                 }
                 catch (Exception)

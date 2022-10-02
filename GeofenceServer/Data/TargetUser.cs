@@ -4,14 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Data.Entity;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace GeofenceServer.Data
 {
     public class TargetUser
     {
         [Key]
+        public int Id { get; set; }
         [Required(AllowEmptyStrings = false, ErrorMessage = "Email missing while manipulating database", ErrorMessageResourceName = "Email")]
         [MaxLength(50, ErrorMessage = "Email adress was over 50 characters.")]
+        [Index(IsUnique = true)]
         public string Email { get; set; }
 
         [Required(AllowEmptyStrings = false, ErrorMessage = "Name missing while manipulating database", ErrorMessageResourceName = "Name")]
@@ -38,11 +41,12 @@ namespace GeofenceServer.Data
             Name = "";
             PasswordHash = "";
             LocationHistory = "";
+            Id = -1;
         }
 
         public override string ToString()
         {
-            return Email + Program.COMM_SEPARATOR + Name + Program.COMM_SEPARATOR + PasswordHash + Program.COMM_SEPARATOR + LocationHistory;
+            return Email + Program.USER_SEPARATOR + Name + Program.USER_SEPARATOR + PasswordHash + Program.USER_SEPARATOR + LocationHistory + Program.USER_SEPARATOR + Id;
         }
     }
 
