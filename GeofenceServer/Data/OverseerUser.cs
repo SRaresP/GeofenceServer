@@ -30,6 +30,7 @@ namespace GeofenceServer.Data
             this.Email = Email;
             this.Name = Name;
             this.PasswordHash = PasswordHash;
+            TrackedUserIDs = "";
         }
 
         public OverseerUser()
@@ -37,12 +38,22 @@ namespace GeofenceServer.Data
             Email = "";
             Name = "";
             PasswordHash = "";
+            TrackedUserIDs = "";
         }
 
         public override string ToString()
         {
-            return Email + Program.USER_SEPARATOR + Name + Program.USER_SEPARATOR + PasswordHash + Program.USER_SEPARATOR + Id;
+            return Email + Program.USER_SEPARATOR + Name + Program.USER_SEPARATOR + PasswordHash + Program.USER_SEPARATOR + Id + Program.USER_SEPARATOR + TrackedUserIDs;
         }
+		public static void AddTrackedUser(int overseerUserId, int targetUserId)
+		{
+			using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+			{
+				OverseerUser overseerFromDb = overseerUserDbContext.Users.SingleOrDefault((user) => user.Id == overseerUserId);
+                overseerFromDb.TrackedUserIDs = TrackedUserHandler.AddTrackedUser(overseerFromDb.TrackedUserIDs, targetUserId.ToString());
+                overseerUserDbContext.SaveChanges();
+            }
+		}
     }
 
     public class OverseerUserDbContext : DbContext

@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using GeofenceServer.Data;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace GeofenceServer
 {
@@ -20,6 +21,7 @@ namespace GeofenceServer
         //location and other passed data from a received string message
         public const char COMM_SEPARATOR = '■';
         public const char USER_SEPARATOR = '√';
+        public const char TRACKED_USERS_SEPARATOR = '°';
 
         //handleMsg cases
         private const string LOGIN_TARGET = "LOGIN_TARGET";
@@ -30,7 +32,8 @@ namespace GeofenceServer
         private const string EDIT_OVERSEER = "EDIT_OVERSEER";
         private const string LOCATION_UPDATE_TARGET = "LOCATION_UPDATE_TARGET";
         private const string GET_UNIQUE_CODE_TARGET = "GET_UNIQUE_CODE_TARGET";
-        private const string GET_LOCATION_HISTORY = "GET_LOCATION_HISTORY";
+        private const string GET_USER = "GET_USER";
+        private const string ADD_TARGET = "ADD_TARGET";
 
         //handleMsg results
         //positive
@@ -39,7 +42,8 @@ namespace GeofenceServer
         private const string EDITED = "EDITED";
         private const string LOCATION_UPDATED = "LOCATION_UPDATED";
         private const string DELIVERED_CODE = "DELIVERED_CODE";
-        private const string GOT_LOCATION_HISTORY = "GOT_LOCATION_HISTORY";
+        private const string GOT_USER = "GOT_USER";
+        private const string ADDED_TARGET = "ADDED_TARGET";
         //negative
         private const string NOT_FOUND = "NOT_FOUND";
         private const string WRONG_PASSWORD = "WRONG_PASSWORD";
@@ -280,10 +284,61 @@ namespace GeofenceServer
                     }
                 }
             }
-            public static string GetLocationHistory(string[] message)
+            public static string AddTarget(string[] message)
+			{
+                try
+                {
+                    string loginResult = LoginOverseer(message);
+                    if (loginResult.StartsWith(LOGGED_IN))
+                    {
+                        int targetId = TargetCodeHandler.Validate(message[2]);
+                        using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+                        {
+                            string email = message[1].Split(USER_SEPARATOR)[0];
+                            var res = from users in overseerUserDbContext.Users
+                                      where users.Email == email
+                                      select users;
+                            if (!res.Any())
+                            {
+                                return NOT_FOUND;
+                            }
+                            else
+							{
+                                OverseerUser.AddTrackedUser(res.First().Id, targetId);
+                                return ADDED_TARGET + COMM_SEPARATOR + targetId;
+                            }
+                        }
+                    }
+                    else
+					{
+                        return loginResult;
+
+                    }
+                }
+                catch (KeyNotFoundException e)
+                {
+                    Trace.TraceWarning(e.Message);
+                    Console.WriteLine(e.Message + "\n");
+                    return NOT_FOUND;
+                }
+                catch (TargetCodeHandler.DuplicateCodesException e)
+                {
+                    Trace.TraceWarning(e.Message);
+                    Console.WriteLine(e.Message + "\n");
+                    // not found because the codes get deleted of duplicates are found
+                    return NOT_FOUND;
+                }
+                catch (Exception e)
+                {
+                    Trace.TraceWarning(e.Message);
+                    Console.WriteLine(e.Message + "\n");
+                    return UNDEFINED_CASE;
+                }
+            }
+            public static string GetUser(string[] message)
 			{
                 string loginResult = LoginOverseer(message);
-                if (loginResult != LOGGED_IN)
+                if (!loginResult.StartsWith(LOGGED_IN))
 				{
                     return loginResult;
 				}
@@ -302,7 +357,7 @@ namespace GeofenceServer
 
                     TargetUser targetUser = res.First();
 
-                    return GOT_LOCATION_HISTORY + COMM_SEPARATOR + targetUser.Id + USER_SEPARATOR + targetUser.Name + USER_SEPARATOR + targetUser.LocationHistory;
+                    return GOT_USER + COMM_SEPARATOR + targetUser.Id + USER_SEPARATOR + targetUser.Name + USER_SEPARATOR + targetUser.LocationHistory;
                 }
             }
 		}
@@ -328,8 +383,10 @@ namespace GeofenceServer
                     return Case.LocationUpdateTarget(message);
                 case GET_UNIQUE_CODE_TARGET:
                     return Case.GetUniqueCodeTarget(message);
-                case GET_LOCATION_HISTORY:
-                    return Case.GetLocationHistory(message);
+                case ADD_TARGET:
+                    return Case.AddTarget(message);
+                case GET_USER:
+                    return Case.GetUser(message);
                 default:
                     return UNDEFINED_CASE;
             }
@@ -349,6 +406,8 @@ namespace GeofenceServer
             mainSocket.Listen(10);
 
             TargetCodeHandler.Clear();
+
+            Console.WriteLine("Initialisation finished, starting request processing.");
 
             while (shouldRun)
             {
@@ -382,9 +441,11 @@ namespace GeofenceServer
                             string response = ProcessRequest(msg);
                             SendResponse(response);
                         }
+                        workerSocket.Close();
                     }
                     catch (Exception ex)
                     {
+                        Console.WriteLine(ex.Message + "\n");
                         Trace.TraceError(ex.Message);
                     }
                 }

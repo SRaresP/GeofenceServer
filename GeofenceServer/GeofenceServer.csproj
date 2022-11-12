@@ -60,6 +60,7 @@
     <Compile Include="Data\OverseerUser.cs" />
     <Compile Include="Data\TargetCodeHandler.cs" />
     <Compile Include="Data\TargetUser.cs" />
+    <Compile Include="Data\TrackedUserHandler.cs" />
     <Compile Include="Security\CryptoHashHelper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

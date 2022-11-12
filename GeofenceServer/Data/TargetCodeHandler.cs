@@ -16,20 +16,21 @@ namespace GeofenceServer.Data
 		private class TargetCode
 		{
 			[Key]
+			public int Id { get; set; }
 			[Required(AllowEmptyStrings = false, ErrorMessage = "Email missing while manipulating database", ErrorMessageResourceName = "Email")]
-			[MaxLength(50, ErrorMessage = "Email adress was over 50 characters.")]
-			public string Email { get; set; }
+			//this Id is also the user ID
+			public int TargetUserId { get; set; }
 			//THIS # IS SUPPOSED TO BE CODE_LENGTH
 			[MaxLength(8, ErrorMessage = "Code was longer than the specified length")]
 			public string Code { get; set; }
 
 			public TargetCode() {
-				Email = "";
+				TargetUserId = -1;
 				Code = "-1";
 			}
-			public TargetCode(string email, string code)
+			public TargetCode(int id, string code)
 			{
-				Email = email;
+				TargetUserId = id;
 				Code = code;
 			}
 		}
@@ -98,7 +99,7 @@ namespace GeofenceServer.Data
 				using (TargetUserDbContext targetUserDbContext = new TargetUserDbContext())
 				{
 					var res = from codes in targetCodeDbContext.Entries
-							  where codes.Email == user.Email
+							  where codes.TargetUserId == user.Id
 							  select codes;
 					int count = res.Count();
 					if (count != 0)
@@ -115,10 +116,10 @@ namespace GeofenceServer.Data
 					++user.NrOfCodeGenerations;
 					targetUserDbContext.SaveChanges();
 
-					TargetCode newEntry = new TargetCode(user.Email, code);
+					TargetCode newEntry = new TargetCode(user.Id, code);
 					targetCodeDbContext.Entries.Add(newEntry);
 					//1.800.000 miliseconds = 30 minutes
-					DeletionTimer timer = new DeletionTimer(5000, newEntry);
+					DeletionTimer timer = new DeletionTimer(1800000, newEntry);
 					timer.Elapsed += timer.DeleteEntry;
 					timer.AutoReset = false;
 					targetCodeDbContext.SaveChanges();
@@ -132,38 +133,31 @@ namespace GeofenceServer.Data
 				return code;
 			}
 		}
-		public static string Validate(int code)
+		public static int Validate(string code)
 		{
-			try
+			using (TargetCodeDbContext targetCodeDbContext = new TargetCodeDbContext())
 			{
-				using (TargetCodeDbContext targetCodeDbContext = new TargetCodeDbContext())
+				var res = from entries in targetCodeDbContext.Entries
+							where entries.Code.Equals(code)
+							select entries;
+				int resultAmount = res.Count();
+				switch (resultAmount)
 				{
-					var res = from entries in targetCodeDbContext.Entries
-							  where entries.Code.Equals(code)
-							  select entries;
-					int resultAmount = res.Count();
-					switch (resultAmount)
-					{
-						case 0:
-							return null;
-						case 1:
-							targetCodeDbContext.Entries.Remove(res.First());
-							targetCodeDbContext.SaveChangesAsync();
-							return res.First().Email;
-						default:
-							foreach(TargetCode entry in res)
-							{
-								targetCodeDbContext.Entries.Remove(entry);
-							}
-							targetCodeDbContext.SaveChangesAsync();
-							throw new DuplicateCodesException("Found duplicate codes in database. Attempted to delete all of them.");
-					}
+					case 0:
+						throw new KeyNotFoundException("User matching passed unique code was not found.");
+					case 1:
+						int id = res.First().TargetUserId;
+						targetCodeDbContext.Entries.Remove(res.First());
+						targetCodeDbContext.SaveChanges();
+						return id;
+					default:
+						foreach(TargetCode entry in res)
+						{
+							targetCodeDbContext.Entries.Remove(entry);
+						}
+						targetCodeDbContext.SaveChanges();
+						throw new DuplicateCodesException("Found duplicate codes in database. Attempted to delete all of them.");
 				}
-			}
-			catch (Exception e)
-			{
-				Trace.TraceError(e.Message);
-				return null;
 			}
 		}
 	}
