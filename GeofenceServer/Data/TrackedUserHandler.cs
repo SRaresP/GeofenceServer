@@ -46,7 +46,11 @@ namespace GeofenceServer.Data
         public static string RemoveUser(string trackedUsers, string idToRemove)
 		{
             int removalIndex = trackedUsers.IndexOf(idToRemove);
-            trackedUsers.Remove(removalIndex, idToRemove.Length + 1);
+            if (removalIndex < 0)
+			{
+                throw new ArgumentException($"idToRemove could not be found in trackedUsers.");
+			}
+            trackedUsers = trackedUsers.Remove(removalIndex, idToRemove.Length + 1);
             return trackedUsers;
 		}
     }

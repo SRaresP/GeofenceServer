@@ -59,6 +59,7 @@
     <Compile Include="Data\LocationHandler.cs" />
     <Compile Include="Data\OverseerUser.cs" />
     <Compile Include="Data\TargetCodeHandler.cs" />
+    <Compile Include="Data\TrackingSettings.cs" />
     <Compile Include="Data\TargetUser.cs" />
     <Compile Include="Data\TrackedUserHandler.cs" />
     <Compile Include="Security\CryptoHashHelper.cs" />

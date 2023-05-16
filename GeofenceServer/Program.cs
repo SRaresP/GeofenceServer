@@ -34,6 +34,10 @@ namespace GeofenceServer
         private const string GET_UNIQUE_CODE_TARGET = "GET_UNIQUE_CODE_TARGET";
         private const string GET_USER = "GET_USER";
         private const string ADD_TARGET = "ADD_TARGET";
+        private const string REMOVE_TARGET = "REMOVE_TARGET";
+        private const string GET_SETTINGS = "GET_SETTINGS";
+        private const string CHANGE_SETTINGS = "CHANGE_SETTINGS";
+        private const string REMOVE_SETTINGS = "REMOVE_SETTINGS";
 
         //handleMsg results
         //positive
@@ -44,10 +48,17 @@ namespace GeofenceServer
         private const string DELIVERED_CODE = "DELIVERED_CODE";
         private const string GOT_USER = "GOT_USER";
         private const string ADDED_TARGET = "ADDED_TARGET";
+        private const string REMOVED_TARGET = "REMOVED_TARGET";
+        private const string GOT_SETTINGS = "GOT_SETTINGS";
+        private const string CHANGED_SETTINGS = "CHANGED_SETTINGS";
+        private const string REMOVED_SETTINGS = "REMOVED_SETTINGS";
         //negative
         private const string NOT_FOUND = "NOT_FOUND";
         private const string WRONG_PASSWORD = "WRONG_PASSWORD";
         private const string EMAIL_ALREADY_TAKEN = "EMAIL_ALREADY_TAKEN";
+        private const string COULD_NOT_REMOVE_TARGET = "COULD_NOT_REMOVE_TARGET";
+        private const string NOT_A_TARGET_ID = "NOT_A_TARGET_ID";
+        private const string NOT_AN_INTERVAL = "NOT_AN_INTERVAL";
         //code problem
         private const string UNDEFINED_CASE = "UNDEFINED_CASE";
 
@@ -325,7 +336,7 @@ namespace GeofenceServer
                 {
                     Trace.TraceWarning(e.Message);
                     Console.WriteLine(e.Message + "\n");
-                    // not found because the codes get deleted of duplicates are found
+                    // not found because the codes get deleted if duplicates are found
                     return NOT_FOUND;
                 }
                 catch (Exception e)
@@ -360,7 +371,184 @@ namespace GeofenceServer
                     return GOT_USER + COMM_SEPARATOR + targetUser.Id + USER_SEPARATOR + targetUser.Name + USER_SEPARATOR + targetUser.LocationHistory;
                 }
             }
-		}
+            public static string RemoveTarget(string[] message)
+            {
+                string loginResult = LoginOverseer(message);
+                if (!loginResult.StartsWith(LOGGED_IN))
+                {
+                    return loginResult;
+                }
+
+                using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+                {
+                    string[] userData = message[1].Split(USER_SEPARATOR);
+                    string userEmail = userData[0];
+
+                    var res = from users in overseerUserDbContext.Users
+                              where users.Email == userEmail
+                              select users;
+                    if (!res.Any())
+                    {
+                        return NOT_FOUND;
+                    }
+
+                    string id = message[2].Trim();
+                    OverseerUser overseerUser = res.First();
+                    try
+                    {
+                        overseerUser.TrackedUserIDs = TrackedUserHandler.RemoveUser(overseerUser.TrackedUserIDs, id);
+                        overseerUserDbContext.SaveChanges();
+                        using (TrackingSettingsDbContext trackingIntervalDbContext = new TrackingSettingsDbContext())
+						{
+                            var resSettings = from settings in trackingIntervalDbContext.TrackingSettings
+                                              where settings.OverseerId == overseerUser.Id &&
+                                                settings.TargetId == int.Parse(id)
+                                              select settings;
+                            TrackingSettings trackingSettings = resSettings.First();
+                            if (trackingSettings != null)
+							{
+                                trackingIntervalDbContext.TrackingSettings.Remove(trackingSettings);
+                                trackingIntervalDbContext.SaveChangesAsync();
+							}
+                        }
+                        return REMOVED_TARGET;
+                    }
+                    catch (Exception e)
+					{
+                        Trace.TraceWarning(e.Message);
+                        return COULD_NOT_REMOVE_TARGET;
+                    }
+                }
+            }
+            public static string GetSettings(string[] message)
+            {
+                string loginResult = LoginOverseer(message);
+                if (!loginResult.StartsWith(LOGGED_IN))
+                {
+                    return loginResult;
+                }
+
+                using (TrackingSettingsDbContext trackingSettingsDbContext = new TrackingSettingsDbContext())
+                {
+                    int overseerId, targetId;
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string email = userString[0];
+                    using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+                    {
+                        var resOv = from users in overseerUserDbContext.Users
+                                    where users.Email == email
+                                    select users;
+                        overseerId = resOv.FirstOrDefault().Id;
+                    }
+                    try
+                    {
+                        targetId = int.Parse(message[2]);
+                    }
+                    catch (Exception e)
+                    {
+                        Trace.TraceError(e.Message);
+                        return NOT_A_TARGET_ID;
+                    }
+
+                    try
+                    {
+                        TrackingSettings res = trackingSettingsDbContext.TrackingSettings.Find(overseerId, targetId);
+                        if (res == null)
+                        {
+                            return GOT_SETTINGS + COMM_SEPARATOR + TrackingSettings.DEFAULT_INTERVAL;
+                        }
+                        return GOT_SETTINGS + COMM_SEPARATOR + res.Interval;
+                    } catch (Exception e)
+					{
+                        Trace.TraceError(e.Message);
+                        Trace.TraceError(e.StackTrace);
+                        Trace.TraceError(e.InnerException.Message);
+                        Trace.TraceError(e.InnerException.StackTrace);
+                        return GOT_SETTINGS + COMM_SEPARATOR + TrackingSettings.DEFAULT_INTERVAL;
+                    }
+                }
+            }
+            public static string ChangeSettings(string[] message)
+            {
+                string loginResult = LoginOverseer(message);
+                if (!loginResult.StartsWith(LOGGED_IN))
+                {
+                    return loginResult;
+                }
+
+                using (TrackingSettingsDbContext trackingSettingsDbContext = new TrackingSettingsDbContext())
+                {
+                    int overseerId, targetId, interval;
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string email = userString[0];
+                    using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+					{
+                        var res = from users in overseerUserDbContext.Users
+                                    where users.Email == email
+                                    select users;
+                        overseerId = res.FirstOrDefault().Id;
+					}
+                    try
+                    {
+                        targetId = int.Parse(message[2]);
+                    }
+                    catch (Exception e)
+                    {
+                        Trace.TraceError(e.Message);
+                        return NOT_A_TARGET_ID;
+                    }
+                    try
+                    {
+                        interval = int.Parse(message[3]);
+                    }
+                    catch (Exception e)
+                    {
+                        Trace.TraceError(e.Message);
+                        return NOT_AN_INTERVAL;
+                    }
+
+                    trackingSettingsDbContext.TrackingSettings.Add(new TrackingSettings(overseerId, targetId, interval));
+                    trackingSettingsDbContext.SaveChanges();
+                    return CHANGED_SETTINGS;
+                }
+            }
+            public static string RemoveSettings(string[] message)
+            {
+                string loginResult = LoginOverseer(message);
+                if (!loginResult.StartsWith(LOGGED_IN))
+                {
+                    return loginResult;
+                }
+
+                using (TrackingSettingsDbContext trackingSettingsDbContext = new TrackingSettingsDbContext())
+                {
+                    int overseerId, targetId;
+                    string[] userString = message[1].Split(USER_SEPARATOR);
+                    string email = userString[0];
+                    using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+                    {
+                        var res = from users in overseerUserDbContext.Users
+                                    where users.Email == email
+                                    select users;
+                        overseerId = res.FirstOrDefault().Id;
+                    }
+                    try
+                    {
+                        targetId = int.Parse(message[2]);
+                    }
+                    catch (Exception e)
+                    {
+                        Trace.TraceError(e.Message);
+                        return NOT_A_TARGET_ID;
+                    }
+
+					trackingSettingsDbContext.TrackingSettings.Remove(
+                        trackingSettingsDbContext.TrackingSettings.Find(overseerId, targetId));
+                    trackingSettingsDbContext.SaveChangesAsync();
+                    return REMOVED_SETTINGS;
+                }
+            }
+        }
 
         private static String ProcessRequest(String msg)
         {
@@ -387,6 +575,14 @@ namespace GeofenceServer
                     return Case.AddTarget(message);
                 case GET_USER:
                     return Case.GetUser(message);
+                case REMOVE_TARGET:
+                    return Case.RemoveTarget(message);
+                case GET_SETTINGS:
+                    return Case.GetSettings(message);
+                case CHANGE_SETTINGS:
+                    return Case.ChangeSettings(message);
+                case REMOVE_SETTINGS:
+                    return Case.RemoveSettings(message);
                 default:
                     return UNDEFINED_CASE;
             }
@@ -413,7 +609,7 @@ namespace GeofenceServer
             {
                 try
                 {
-                    //listen for a connection and accept it
+                    // listen for a connection and accept it
                     workerSocket = mainSocket.Accept();
                     if (workerSocket == null)
                     {
@@ -423,14 +619,14 @@ namespace GeofenceServer
                     byte[] rawMsg = new byte[BUFFER_SIZE];
                     try
                     {
-                        //read and check message
+                        // read and check message
                         int bCount = workerSocket.Receive(rawMsg);
                         if (bCount > BUFFER_SIZE)
                         {
                             Trace.TraceError("Buffer overflow while reading from socket.");
                         }
                         string msg = Encoding.UTF8.GetString(rawMsg);
-                        //process message and send a response
+                        // process message and send a response
                         msg = msg.Split('\0')[0];
                         if (bCount > 0)
                         {

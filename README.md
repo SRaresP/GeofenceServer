@@ -3,11 +3,15 @@ The server that stores and retrieves information related to accounts and locatio
 
 ## Todo
 
+Allow targets and overseers to delete their accounts. When they do so, delete all data associated with them.
+
 Give the targets their user name when they log in. Consider the location history too.
 
 Fix the problem that causes the server to stop working in certain cases.
 
 ## Done.
+
+Each overseer - target pair can now have an associated set of settings. The set currently only includes the location update interval.
 
 Overseers can now register and log in. They get their tracked users when they log in as well.
 
