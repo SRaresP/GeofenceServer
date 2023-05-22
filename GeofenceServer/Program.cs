@@ -38,6 +38,7 @@ namespace GeofenceServer
         private const string GET_SETTINGS = "GET_SETTINGS";
         private const string CHANGE_SETTINGS = "CHANGE_SETTINGS";
         private const string REMOVE_SETTINGS = "REMOVE_SETTINGS";
+        private const string GET_TARGET_LOCATION_AND_INTERVAL = "GET_TARGET_LOCATION_AND_INTERVAL";
 
         //handleMsg results
         //positive
@@ -52,6 +53,7 @@ namespace GeofenceServer
         private const string GOT_SETTINGS = "GOT_SETTINGS";
         private const string CHANGED_SETTINGS = "CHANGED_SETTINGS";
         private const string REMOVED_SETTINGS = "REMOVED_SETTINGS";
+        private const string GOT_TARGET_LOCATION_AND_INTERVAL = "GOT_TARGET_LOCATION_AND_INTERVAL";
         //negative
         private const string NOT_FOUND = "NOT_FOUND";
         private const string WRONG_PASSWORD = "WRONG_PASSWORD";
@@ -354,12 +356,54 @@ namespace GeofenceServer
                     return loginResult;
 				}
 
-                int id = int.Parse(message[2]);
+
+                int overseerId, targetId, interval;
+                string[] userString = message[1].Split(USER_SEPARATOR);
+                string email = userString[0];
+
+                using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+                {
+                    var resOv = from users in overseerUserDbContext.Users
+                                where users.Email == email
+                                select users;
+                    overseerId = resOv.FirstOrDefault().Id;
+                }
+
+                try
+                {
+                    targetId = int.Parse(message[2]);
+                }
+                catch (Exception e)
+                {
+                    Trace.TraceError(e.Message);
+                    return NOT_A_TARGET_ID;
+                }
+
+                using (TrackingSettingsDbContext trackingSettingsDbContext = new TrackingSettingsDbContext())
+                {
+                    try
+                    {
+                        TrackingSettings res = trackingSettingsDbContext.TrackingSettings.Find(overseerId, targetId);
+                        if (res == null)
+                        {
+                            interval = TrackingSettings.DEFAULT_INTERVAL;
+                        }
+                        interval = res.Interval;
+                    }
+                    catch (Exception e)
+                    {
+                        Trace.TraceError(e.Message);
+                        Trace.TraceError(e.StackTrace);
+                        Trace.TraceError(e.InnerException.Message);
+                        Trace.TraceError(e.InnerException.StackTrace);
+                        interval = TrackingSettings.DEFAULT_INTERVAL;
+                    }
+                }
 
                 using (TargetUserDbContext targetUserDbContext = new TargetUserDbContext())
                 {
                     var res = from users in targetUserDbContext.Users
-                              where users.Id == id
+                              where users.Id == targetId
                               select users;
                     if (!res.Any())
                     {
@@ -368,7 +412,15 @@ namespace GeofenceServer
 
                     TargetUser targetUser = res.First();
 
-                    return GOT_USER + COMM_SEPARATOR + targetUser.Id + USER_SEPARATOR + targetUser.Name + USER_SEPARATOR + targetUser.LocationHistory;
+                    return GOT_USER +
+                        COMM_SEPARATOR +
+                        targetUser.Id +
+                        USER_SEPARATOR +
+                        targetUser.Name +
+                        USER_SEPARATOR +
+                        targetUser.LocationHistory +
+                        USER_SEPARATOR +
+                        interval;
                 }
             }
             public static string RemoveTarget(string[] message)
@@ -548,6 +600,64 @@ namespace GeofenceServer
                     return REMOVED_SETTINGS;
                 }
             }
+            public static string GetTargetLocationAndInterval(string[] message)
+            {
+                string loginResult = LoginOverseer(message);
+                if (!loginResult.StartsWith(LOGGED_IN))
+                {
+                    return loginResult;
+                }
+
+                int overseerId, targetId, interval;
+                string[] userString = message[1].Split(USER_SEPARATOR);
+                string email = userString[0];
+                TargetUser target;
+                using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+                {
+                    var resOv = from users in overseerUserDbContext.Users
+                                where users.Email == email
+                                select users;
+                    overseerId = resOv.FirstOrDefault().Id;
+                }
+                try
+                {
+                    targetId = int.Parse(message[2]);
+                }
+                catch (Exception e)
+                {
+                    Trace.TraceError(e.Message);
+                    return NOT_A_TARGET_ID;
+                }
+                using (TargetUserDbContext targetUserDbContext = new TargetUserDbContext())
+				{
+                    target = targetUserDbContext.Users.Find(targetId);
+                }
+                using (TrackingSettingsDbContext trackingSettingsDbContext = new TrackingSettingsDbContext())
+                {
+                    try
+                    {
+                        TrackingSettings res = trackingSettingsDbContext.TrackingSettings.Find(overseerId, targetId);
+                        if (res == null)
+                        {
+                           interval = TrackingSettings.DEFAULT_INTERVAL;
+                        }
+                        interval = res.Interval;
+                    }
+                    catch (Exception e)
+                    {
+                        Trace.TraceError(e.Message);
+                        Trace.TraceError(e.StackTrace);
+                        Trace.TraceError(e.InnerException.Message);
+                        Trace.TraceError(e.InnerException.StackTrace);
+                        interval = TrackingSettings.DEFAULT_INTERVAL;
+                    }
+                }
+                return GOT_TARGET_LOCATION_AND_INTERVAL +
+                    COMM_SEPARATOR +
+                    target.LocationHistory +
+                    COMM_SEPARATOR +
+                    interval;
+            }
         }
 
         private static String ProcessRequest(String msg)
@@ -583,6 +693,8 @@ namespace GeofenceServer
                     return Case.ChangeSettings(message);
                 case REMOVE_SETTINGS:
                     return Case.RemoveSettings(message);
+                case GET_TARGET_LOCATION_AND_INTERVAL:
+                    return Case.GetTargetLocationAndInterval(message);
                 default:
                     return UNDEFINED_CASE;
             }
