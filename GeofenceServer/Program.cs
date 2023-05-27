@@ -250,6 +250,7 @@ namespace GeofenceServer
             {
                 using (TargetUserDbContext tuDbContext = new TargetUserDbContext())
                 {
+                    int interval;
                     string[] userString = message[1].Split(USER_SEPARATOR);
                     string locationString = message[2];
                     string mail = userString[0];
@@ -265,7 +266,30 @@ namespace GeofenceServer
 						}
                         user.LocationHistory = LocationHandler.AddLocation(user.LocationHistory, locationString);
                         tuDbContext.SaveChanges();
-                        return LOCATION_UPDATED;
+                        using (TrackingSettingsDbContext trackingSettingsDbContext = new TrackingSettingsDbContext())
+                        {
+                            try
+                            {
+                                var res = from settings in trackingSettingsDbContext.TrackingSettings
+                                                       where settings.TargetId == user.Id
+                                                       orderby settings.Interval descending
+                                                       select settings;
+                                if (!res.Any())
+                                {
+                                    interval = TrackingSettings.DEFAULT_INTERVAL;
+                                }
+                                interval = res.First().Interval;
+                            }
+                            catch (Exception e)
+                            {
+                                Trace.TraceError(e.Message);
+                                Trace.TraceError(e.StackTrace);
+                                Trace.TraceError(e.InnerException.Message);
+                                Trace.TraceError(e.InnerException.StackTrace);
+                                interval = TrackingSettings.DEFAULT_INTERVAL;
+                            }
+                        }
+                        return LOCATION_UPDATED + COMM_SEPARATOR + interval;
                     }
                     else
                     {
@@ -388,7 +412,10 @@ namespace GeofenceServer
                         {
                             interval = TrackingSettings.DEFAULT_INTERVAL;
                         }
-                        interval = res.Interval;
+                        else
+                        {
+                            interval = res.Interval;
+                        }
                     }
                     catch (Exception e)
                     {
@@ -559,7 +586,15 @@ namespace GeofenceServer
                         return NOT_AN_INTERVAL;
                     }
 
-                    trackingSettingsDbContext.TrackingSettings.Add(new TrackingSettings(overseerId, targetId, interval));
+                    TrackingSettings setting = trackingSettingsDbContext.TrackingSettings.Find(overseerId, targetId);
+                    if (setting == null)
+                    {
+                        trackingSettingsDbContext.TrackingSettings.Add(new TrackingSettings(overseerId, targetId, interval));
+                    }
+                    else
+					{
+                        setting.Interval = interval;
+					}
                     trackingSettingsDbContext.SaveChanges();
                     return CHANGED_SETTINGS;
                 }
@@ -639,9 +674,12 @@ namespace GeofenceServer
                         TrackingSettings res = trackingSettingsDbContext.TrackingSettings.Find(overseerId, targetId);
                         if (res == null)
                         {
-                           interval = TrackingSettings.DEFAULT_INTERVAL;
+                            interval = TrackingSettings.DEFAULT_INTERVAL;
                         }
-                        interval = res.Interval;
+                        else
+                        {
+                            interval = res.Interval;
+                        }
                     }
                     catch (Exception e)
                     {
