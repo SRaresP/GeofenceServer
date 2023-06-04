@@ -14,11 +14,12 @@ namespace GeofenceServer
         private const int PORT = 8000;
         private static Socket mainSocket;
         private static Socket workerSocket;
+
+        private static string END = "<_-END-_>";
+
         //Buffer size in bytes
         private const int BUFFER_SIZE = 1000;
-        //COMM_SEPARATOR is currently 254 in ASCII
-        //Used to separate the request type, user data,
-        //location and other passed data from a received string message
+
         public const char COMM_SEPARATOR = '■';
         public const char USER_SEPARATOR = '√';
         public const char TRACKED_USERS_SEPARATOR = '°';
@@ -39,6 +40,8 @@ namespace GeofenceServer
         private const string CHANGE_SETTINGS = "CHANGE_SETTINGS";
         private const string REMOVE_SETTINGS = "REMOVE_SETTINGS";
         private const string GET_TARGET_LOCATION_AND_INTERVAL = "GET_TARGET_LOCATION_AND_INTERVAL";
+        private const string GET_GEOAREAS = "GET_GEOAREAS";
+        private const string ADD_GEOAREA = "ADD_GEOAREA";
 
         //handleMsg results
         //positive
@@ -54,6 +57,8 @@ namespace GeofenceServer
         private const string CHANGED_SETTINGS = "CHANGED_SETTINGS";
         private const string REMOVED_SETTINGS = "REMOVED_SETTINGS";
         private const string GOT_TARGET_LOCATION_AND_INTERVAL = "GOT_TARGET_LOCATION_AND_INTERVAL";
+        private const string GOT_GEOAREAS = "GOT_GEOAREAS";
+        private const string ADDED_GEOAREA = "ADDED_GEOAREA";
         //negative
         private const string NOT_FOUND = "NOT_FOUND";
         private const string WRONG_PASSWORD = "WRONG_PASSWORD";
@@ -61,6 +66,8 @@ namespace GeofenceServer
         private const string COULD_NOT_REMOVE_TARGET = "COULD_NOT_REMOVE_TARGET";
         private const string NOT_A_TARGET_ID = "NOT_A_TARGET_ID";
         private const string NOT_AN_INTERVAL = "NOT_AN_INTERVAL";
+        private const string NOT_A_GEOAREA = "NOT_A_GEOAREA";
+        private const string ALREADY_TRACKING = "ALREADY_TRACKING";
         //code problem
         private const string UNDEFINED_CASE = "UNDEFINED_CASE";
 
@@ -341,8 +348,14 @@ namespace GeofenceServer
                             }
                             else
 							{
-                                OverseerUser.AddTrackedUser(res.First().Id, targetId);
-                                return ADDED_TARGET + COMM_SEPARATOR + targetId;
+                                OverseerUser overseer = res.First();
+                                if (overseer.TrackedUserIDs.Split(TRACKED_USERS_SEPARATOR).Contains(targetId.ToString())) {
+                                    return ALREADY_TRACKING + COMM_SEPARATOR + targetId;
+                                }
+                                else {
+                                    OverseerUser.AddTrackedUser(overseer.Id, targetId);
+                                    return ADDED_TARGET + COMM_SEPARATOR + targetId;
+                                }
                             }
                         }
                     }
@@ -696,6 +709,104 @@ namespace GeofenceServer
                     COMM_SEPARATOR +
                     interval;
             }
+            public static string GetGeoAreas(string[] message)
+            {
+                string loginResult = LoginOverseer(message);
+                if (!loginResult.StartsWith(LOGGED_IN))
+                {
+                    return loginResult;
+                }
+                int overseerId, targetId;
+                string[] userString = message[1].Split(USER_SEPARATOR);
+                string email = userString[0];
+                using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+                {
+                    var resOv = from users in overseerUserDbContext.Users
+                                where users.Email == email
+                                select users;
+                    // if the user doesn't exist that's caught by the login, no need to check here...I hope
+                    overseerId = resOv.FirstOrDefault().Id;
+                }
+                try
+                {
+                    targetId = int.Parse(message[2]);
+                }
+                catch (Exception e)
+                {
+                    Trace.TraceError(e.Message);
+                    return NOT_A_TARGET_ID;
+                }
+
+                string geoAreas = GeoArea.GetGeoAreaStr(overseerId, targetId);
+
+                return GOT_GEOAREAS +
+                    COMM_SEPARATOR +
+                    geoAreas;
+            }
+            public static string AddGeoArea(string[] message)
+            {
+                string loginResult = LoginOverseer(message);
+                if (!loginResult.StartsWith(LOGGED_IN))
+                {
+                    return loginResult;
+                }
+                int overseerId, targetId;
+                string[] userString = message[1].Split(USER_SEPARATOR);
+                string email = userString[0];
+                using (OverseerUserDbContext overseerUserDbContext = new OverseerUserDbContext())
+                {
+                    var resOv = from users in overseerUserDbContext.Users
+                                where users.Email == email
+                                select users;
+                    // if the user doesn't exist that's caught by the login, no need to check here...I hope
+                    overseerId = resOv.FirstOrDefault().Id;
+                }
+                try
+                {
+                    targetId = int.Parse(message[2]);
+                }
+                catch (Exception e)
+                {
+                    Trace.TraceError(e.Message);
+                    return NOT_A_TARGET_ID;
+                }
+                try
+                {
+                    GeoArea geoArea = new GeoArea(message[3], overseerId, targetId);
+                    using (GeoAreaDbContext geoAreaDbContext = new GeoAreaDbContext())
+					{
+                        // For now only one GeoArea will be allotted to overseer-target pairs
+                        geoAreaDbContext.Database.ExecuteSqlCommand("DELETE FROM dbo.GeoAreas");
+                        geoAreaDbContext.Areas.Add(geoArea);
+                        geoAreaDbContext.SaveChanges();
+                    }
+                    using (GeoFenceDbContext geoFenceDbContext = new GeoFenceDbContext())
+					{
+                        var fenceRes = from fences in geoFenceDbContext.GeoFences
+                                       where fences.GeoAreaId == geoArea.Id
+                                       select fences;
+                        foreach (GeoFence geoFence in fenceRes)
+						{
+                            geoFenceDbContext.GeoFences.Remove(geoFence);
+						}
+                        foreach (GeoFence geoFence in geoArea.GeoFences)
+						{
+                            geoFenceDbContext.GeoFences.Add(geoFence);
+						}
+                        geoFenceDbContext.SaveChanges();
+                    }
+                    return ADDED_GEOAREA;
+                }
+                catch (Exception e)
+                    when (e is ArgumentNullException ||
+                    e is FormatException ||
+                    e is OverflowException)
+				{
+                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.StackTrace);
+                    return NOT_A_GEOAREA;
+                }
+            }
         }
 
         private static String ProcessRequest(String msg)
@@ -733,6 +844,10 @@ namespace GeofenceServer
                     return Case.RemoveSettings(message);
                 case GET_TARGET_LOCATION_AND_INTERVAL:
                     return Case.GetTargetLocationAndInterval(message);
+                case GET_GEOAREAS:
+                    return Case.GetGeoAreas(message);
+                case ADD_GEOAREA:
+                    return Case.AddGeoArea(message);
                 default:
                     return UNDEFINED_CASE;
             }
@@ -746,7 +861,6 @@ namespace GeofenceServer
 
         public static void Main(string[] args)
         {
-            bool shouldRun = true;
             mainSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             mainSocket.Bind(new IPEndPoint(IPAddress.Any, PORT));
             mainSocket.Listen(10);
@@ -755,7 +869,7 @@ namespace GeofenceServer
 
             Console.WriteLine("Initialisation finished, starting request processing.");
 
-            while (shouldRun)
+            while (true)
             {
                 try
                 {
@@ -763,41 +877,41 @@ namespace GeofenceServer
                     workerSocket = mainSocket.Accept();
                     if (workerSocket == null)
                     {
-                        return;
+                        continue;
                     }
                     Console.WriteLine("\nAccepted connection from: " + workerSocket.RemoteEndPoint);
                     byte[] rawMsg = new byte[BUFFER_SIZE];
-                    try
+                    // read and check message
+                    string message = "";
+                    int bCount = workerSocket.Receive(rawMsg);
+                    while (bCount != 0)
                     {
-                        // read and check message
-                        int bCount = workerSocket.Receive(rawMsg);
-                        if (bCount > BUFFER_SIZE)
+                        message += Encoding.UTF8.GetString(rawMsg);
+                        if (message.Contains(END))
                         {
-                            Trace.TraceError("Buffer overflow while reading from socket.");
+                            break;
                         }
-                        string msg = Encoding.UTF8.GetString(rawMsg);
-                        // process message and send a response
-                        msg = msg.Split('\0')[0];
-                        if (bCount > 0)
-                        {
-                            string[] splitMsg = msg.Split(COMM_SEPARATOR);
-                            string request = splitMsg[0];
-                            string from = splitMsg[1].Split(USER_SEPARATOR)[0];
-                            Console.WriteLine("Request: " + request + " from:" + from);
-                            string response = ProcessRequest(msg);
-                            SendResponse(response);
-                        }
-                        workerSocket.Close();
+                        bCount = workerSocket.Receive(rawMsg);
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message + "\n");
-                        Trace.TraceError(ex.Message);
+                    int indexOfNull = message.IndexOf('\0');
+                    if (indexOfNull >= 0) {
+                        message = message.Remove(indexOfNull, message.Length - indexOfNull);
                     }
+                    string msg = message.Substring(0, message.IndexOf(END));
+                    // process message and send a response
+                    string[] splitMsg = msg.Split(COMM_SEPARATOR);
+                    string request = splitMsg[0];
+                    string from = splitMsg[1].Split(USER_SEPARATOR)[0];
+                    Console.WriteLine("Request: " + request + " from:" + from);
+                    string response = ProcessRequest(msg);
+                    SendResponse(response + END);
+                    workerSocket.Close();
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    return;
+                    Console.WriteLine(e.Message + "\n");
+                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.StackTrace);
                 }
             }
         }

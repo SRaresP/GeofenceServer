@@ -56,6 +56,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Data\GeoArea.cs" />
+    <Compile Include="Data\GeoFence.cs" />
     <Compile Include="Data\LocationHandler.cs" />
     <Compile Include="Data\OverseerUser.cs" />
     <Compile Include="Data\TargetCodeHandler.cs" />
