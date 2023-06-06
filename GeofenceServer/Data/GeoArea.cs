@@ -26,9 +26,9 @@ namespace GeofenceServer.Data
 
 		[Key, Column(Order = 0)]
 		public int Id { get; set; }
-		[Key, Column(Order = 1)]
+		[Required(ErrorMessage = "OverseerId missing while manipulating database", ErrorMessageResourceName = "GeoArea")]
 		public int OverseerId { get; set; }
-		[Key, Column(Order = 2)]
+		[Required(ErrorMessage = "TargetId missing while manipulating database", ErrorMessageResourceName = "GeoArea")]
 		public int TargetId { get; set; }
 		[Required(ErrorMessage = "Color missing while manipulating database", ErrorMessageResourceName = "GeoArea")]
 		public int Color { get; set; }

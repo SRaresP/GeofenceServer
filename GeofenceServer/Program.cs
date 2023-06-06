@@ -285,14 +285,15 @@ namespace GeofenceServer
                                 {
                                     interval = TrackingSettings.DEFAULT_INTERVAL;
                                 }
-                                interval = res.First().Interval;
+                                else
+                                {
+                                    interval = res.First().Interval;
+                                }
                             }
                             catch (Exception e)
                             {
                                 Trace.TraceError(e.Message);
                                 Trace.TraceError(e.StackTrace);
-                                Trace.TraceError(e.InnerException.Message);
-                                Trace.TraceError(e.InnerException.StackTrace);
                                 interval = TrackingSettings.DEFAULT_INTERVAL;
                             }
                         }
@@ -483,31 +484,53 @@ namespace GeofenceServer
                     {
                         return NOT_FOUND;
                     }
-
                     string id = message[2].Trim();
                     OverseerUser overseerUser = res.First();
+                    int targetId = int.Parse(id);
+                    try {
+                        using (TrackingSettingsDbContext trackingIntervalDbContext = new TrackingSettingsDbContext())
+                        {
+                            var resSettings = from settings in trackingIntervalDbContext.TrackingSettings
+                                              where settings.OverseerId == overseerUser.Id &&
+                                                settings.TargetId == targetId
+                                              select settings;
+                            TrackingSettings trackingSettings = resSettings.First();
+                            if (trackingSettings != null)
+                            {
+                                trackingIntervalDbContext.TrackingSettings.Remove(trackingSettings);
+                                trackingIntervalDbContext.SaveChanges();
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Trace.TraceError(e.Message);
+                        Trace.TraceError(e.StackTrace);
+                    }
+                    try {
+                        using (GeoAreaDbContext geoAreaDbContext = new GeoAreaDbContext())
+                        {
+                            geoAreaDbContext.Database.ExecuteSqlCommand("DELETE FROM dbo.GeoAreas" +
+                                " WHERE OverseerId = " + overseerUser.Id + " AND " +
+                                "TargetId = " + targetId);
+                            geoAreaDbContext.SaveChanges();
+                        }
+                    }
+                    catch (Exception e)
+					{
+                        Trace.TraceError(e.Message);
+                        Trace.TraceError(e.StackTrace);
+                    }
                     try
                     {
                         overseerUser.TrackedUserIDs = TrackedUserHandler.RemoveUser(overseerUser.TrackedUserIDs, id);
                         overseerUserDbContext.SaveChanges();
-                        using (TrackingSettingsDbContext trackingIntervalDbContext = new TrackingSettingsDbContext())
-						{
-                            var resSettings = from settings in trackingIntervalDbContext.TrackingSettings
-                                              where settings.OverseerId == overseerUser.Id &&
-                                                settings.TargetId == int.Parse(id)
-                                              select settings;
-                            TrackingSettings trackingSettings = resSettings.First();
-                            if (trackingSettings != null)
-							{
-                                trackingIntervalDbContext.TrackingSettings.Remove(trackingSettings);
-                                trackingIntervalDbContext.SaveChangesAsync();
-							}
-                        }
                         return REMOVED_TARGET;
                     }
                     catch (Exception e)
-					{
-                        Trace.TraceWarning(e.Message);
+                    {
+                        Trace.TraceError(e.Message);
+                        Trace.TraceError(e.StackTrace);
                         return COULD_NOT_REMOVE_TARGET;
                     }
                 }
@@ -776,7 +799,9 @@ namespace GeofenceServer
                     using (GeoAreaDbContext geoAreaDbContext = new GeoAreaDbContext())
 					{
                         // For now only one GeoArea will be allotted to overseer-target pairs
-                        geoAreaDbContext.Database.ExecuteSqlCommand("DELETE FROM dbo.GeoAreas");
+                        geoAreaDbContext.Database.ExecuteSqlCommand("DELETE FROM dbo.GeoAreas" +
+                            " WHERE OverseerId = " + overseerId + " AND " +
+                            "TargetId = " + targetId);
                         geoAreaDbContext.Areas.Add(geoArea);
                         geoAreaDbContext.SaveChanges();
                     }
@@ -791,6 +816,7 @@ namespace GeofenceServer
 						}
                         foreach (GeoFence geoFence in geoArea.GeoFences)
 						{
+                            geoFence.GeoAreaId = geoArea.Id;
                             geoFenceDbContext.GeoFences.Add(geoFence);
 						}
                         geoFenceDbContext.SaveChanges();
