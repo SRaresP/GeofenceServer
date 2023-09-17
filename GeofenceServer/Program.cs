@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using GeofenceServer.Data;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace GeofenceServer
 {
@@ -350,11 +352,11 @@ namespace GeofenceServer
                             else
 							{
                                 OverseerUser overseer = res.First();
-                                if (overseer.TrackedUserIDs.Split(TRACKED_USERS_SEPARATOR).Contains(targetId.ToString())) {
+                                if (overseer.TrackedUserIDs.Contains(targetId)) {
                                     return ALREADY_TRACKING + COMM_SEPARATOR + targetId;
                                 }
                                 else {
-                                    OverseerUser.AddTrackedUser(overseer.Id, targetId);
+                                    overseer.TrackedUserIDs.Add(targetId);
                                     return ADDED_TARGET + COMM_SEPARATOR + targetId;
                                 }
                             }
@@ -459,7 +461,7 @@ namespace GeofenceServer
                         USER_SEPARATOR +
                         targetUser.Name +
                         USER_SEPARATOR +
-                        targetUser.LocationHistory +
+                        LocationHandler.truncateHistoryForTransmission(targetUser.LocationHistory) +
                         USER_SEPARATOR +
                         interval;
                 }
@@ -523,7 +525,7 @@ namespace GeofenceServer
                     }
                     try
                     {
-                        overseerUser.TrackedUserIDs = TrackedUserHandler.RemoveUser(overseerUser.TrackedUserIDs, id);
+                        overseerUser.TrackedUserIDs.Remove(targetId);
                         overseerUserDbContext.SaveChanges();
                         return REMOVED_TARGET;
                     }
@@ -728,7 +730,7 @@ namespace GeofenceServer
                 }
                 return GOT_TARGET_LOCATION_AND_INTERVAL +
                     COMM_SEPARATOR +
-                    target.LocationHistory +
+                    LocationHandler.truncateHistoryForTransmission(target.LocationHistory) +
                     COMM_SEPARATOR +
                     interval;
             }

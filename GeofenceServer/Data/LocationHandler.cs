@@ -13,7 +13,8 @@ namespace GeofenceServer.Data
     //by using this utility class.
     class LocationHandler
     {
-        private const int CAPACITY = 4;
+        private const int CAPACITY = 500;
+        public const int TRANSMISSION_CAPACITY = 4;
         //LOC_SEPARATOR is currently 253 in ASCII
         //Used to separate the date, latitude and longitude within a location string
         private const char DATE_LAT_LONG_SEPARATOR = '²';
@@ -63,5 +64,27 @@ namespace GeofenceServer.Data
         {
             return locationHistory.Split(LOC_HISTORY_SEPARATOR)[0];
         }
+        // locationNr is 0-based
+        public static int getIndexOfNthLocation(string locationHistory, int locationNr)
+		{
+            if (locationNr == 0) return 0;
+            int index = 0, locationIndex = 0;
+            foreach (char c in locationHistory)
+            {
+                if (c.Equals(LOC_HISTORY_SEPARATOR))
+				{
+                    if (++locationIndex == locationNr)
+					{
+                        return ++index;
+					}
+                }
+                ++index;
+            }
+            throw new ArgumentException("Smaller number of locations in location history than the location number specified.");
+		}
+        public static string truncateHistoryForTransmission(string locationHistory)
+		{
+            return locationHistory.Substring(0, getIndexOfNthLocation(locationHistory, TRANSMISSION_CAPACITY));
+		}
     }
 }

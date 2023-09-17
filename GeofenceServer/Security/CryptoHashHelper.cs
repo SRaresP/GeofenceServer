@@ -10,7 +10,7 @@ public class CryptoHashHelper
     private ICryptoTransform Encryptor;
     private ICryptoTransform Decryptor;
     private SHA256 Hasher;
-    private string SecretFolderpath = "D:/RaresLaptop/8Uni/Materiale/DezvoltareaAplicatiilorMobile/VideoWIzardServer/VideoWIzardServer/Security/";
+    private string SecretFolderpath = "E:/ProgramData/CsharpProjects/GeofenceServer/GeofenceServer/Security/";
 
     public CryptoHashHelper()
     {

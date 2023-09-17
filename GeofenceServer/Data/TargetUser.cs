@@ -46,7 +46,11 @@ namespace GeofenceServer.Data
 
         public override string ToString()
         {
-            return Email + Program.USER_SEPARATOR + Name + Program.USER_SEPARATOR + PasswordHash + Program.USER_SEPARATOR + LocationHistory + Program.USER_SEPARATOR + Id;
+            return Email + Program.USER_SEPARATOR +
+                Name + Program.USER_SEPARATOR +
+                PasswordHash + Program.USER_SEPARATOR +
+                LocationHandler.truncateHistoryForTransmission(LocationHistory) + Program.USER_SEPARATOR
+                + Id;
         }
     }
 
