@@ -1,72 +1,80 @@
 ﻿using System;
 using System.Collections;
+using System.Diagnostics;
+using System.Reflection;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Entity;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace GeofenceServer.Data
 {
-	public class GeoArea
-	{
-		private const char AREA_FENCE_SEPARATOR = '·';
-		private const char AREA_DETAILS_SEPARATOR = '°';
-		private const char FENCES_SEPARATOR = '≈';
-		private const char AREAS_SEPARATOR = '÷';
+    public partial class GeoArea : DatabaseClient
+    {
+		public static int DEFAULT_COLOR = 0xffffff;
 
-		public enum GeoAreaMode
+        private const char AREA_FENCE_SEPARATOR = '·';
+        private const char AREA_DETAILS_SEPARATOR = '°';
+        private const char FENCES_SEPARATOR = '≈';
+        private const char AREAS_SEPARATOR = '÷';
+
+        public ArrayList GeoFences { get; set; }
+
+        public enum GeoAreaMode
 		{
+			NONE,
 			ALERT_WHEN_INSIDE,
-			ALERT_WHEN_OUTSIDE
+            ALERT_WHEN_OUTSIDE
 		}
 
-		[Key, Column(Order = 0)]
-		public int Id { get; set; }
-		[Required(ErrorMessage = "OverseerId missing while manipulating database", ErrorMessageResourceName = "GeoArea")]
-		public int OverseerId { get; set; }
-		[Required(ErrorMessage = "TargetId missing while manipulating database", ErrorMessageResourceName = "GeoArea")]
-		public int TargetId { get; set; }
-		[Required(ErrorMessage = "Color missing while manipulating database", ErrorMessageResourceName = "GeoArea")]
-		public int Color { get; set; }
-		[Required(ErrorMessage = "Mode missing while manipulating database", ErrorMessageResourceName = "GeoArea")]
-		public GeoAreaMode Mode { get; set; }
-		[Required(ErrorMessage = "Mode missing while manipulating database", ErrorMessageResourceName = "GeoArea")]
-		public string TriggerMessage { get; set; }
-		[NotMapped]
-		public ArrayList GeoFences { get; set; }
-
-		public static ArrayList GetGeoAreaList(int overseerId, int targetId)
+		public static ArrayList GetGeoAreaList(long overseerId, long targetId)
 		{
-			using (GeoAreaDbContext geoDbContext = new GeoAreaDbContext())
+			GeoArea[] geoAreas;
 			{
-				var geoAreas = from areas in geoDbContext.Areas
-							   where areas.OverseerId == overseerId
-							   where areas.TargetId == targetId
-							   select areas;
-				ArrayList geoAreaList = new ArrayList(1);
-				foreach (GeoArea geoArea in geoAreas)
+				GeoArea geoArea = new GeoArea()
 				{
-					geoAreaList.Add(geoArea);
-					using (GeoFenceDbContext fenceDbContext = new GeoFenceDbContext())
-					{
-						var geoFences = from fences in fenceDbContext.GeoFences
-										where fences.GeoAreaId == geoArea.Id
-										select fences;
-						foreach (GeoFence geoFence in geoFences)
-						{
-							geoArea.GeoFences.Add(geoFence);
-						}
-					}
+					OverseerId = overseerId,
+					TargetId = targetId
+				};
+				try
+				{
+					geoAreas = geoArea.LoadMultipleUsingAvailableData();
 				}
-				return geoAreaList;
+				catch (TableEntryDoesNotExistException)
+				{
+					geoAreas = new GeoArea[0];
+				}
 			}
+
+			ArrayList geoAreaList = new ArrayList(1);
+			foreach (GeoArea geoArea in geoAreas)
+			{
+				geoAreaList.Add(geoArea);
+				GeoFence geoFence = new GeoFence()
+				{
+					GeoAreaId = geoArea.Id
+				};
+				GeoFence[] geoFences;
+				try
+				{
+					geoFences = geoFence.LoadMultipleUsingAvailableData();
+				}
+				catch (TableEntryDoesNotExistException)
+				{
+					geoFences = new GeoFence[0];
+				}
+				foreach (GeoFence geoF in geoFences)
+				{
+					geoArea.GeoFences.Add(geoF);
+				}
+			}
+			return geoAreaList;
 		}
 
-		public static string GetGeoAreaStr(int overseerId, int targetId)
+		public static string GetGeoAreaStr(long overseerId, long targetId)
 		{
 			ArrayList geoAreas = GetGeoAreaList(overseerId, targetId);
 			if (geoAreas.Count < 1) return "";
@@ -78,8 +86,9 @@ namespace GeofenceServer.Data
 			return output;
 		}
 
-		public GeoArea(int overseerId, int targetId, int color, GeoAreaMode mode, string triggerMessage)
+		public GeoArea(long overseerId, long targetId, int color, GeoAreaMode mode, string triggerMessage)
 		{
+			Id = -1;
 			OverseerId = overseerId;
 			TargetId = targetId;
 			Color = color;
@@ -88,8 +97,9 @@ namespace GeofenceServer.Data
 			GeoFences = new ArrayList(1);
 		}
 
-		public GeoArea(int overseerId, int targetId, int color, GeoAreaMode mode)
+		public GeoArea(long overseerId, long targetId, int color, GeoAreaMode mode)
 		{
+			Id = -1;
 			OverseerId = overseerId;
 			TargetId = targetId;
 			Color = color;
@@ -98,49 +108,59 @@ namespace GeofenceServer.Data
 			GeoFences = new ArrayList(1);
 		}
 
-		public GeoArea(int overseerId, int targetId, int color)
+		public GeoArea(long overseerId, long targetId, int color)
 		{
+			Id = -1;
 			OverseerId = overseerId;
 			TargetId = targetId;
 			Color = color;
-			Mode = GeoAreaMode.ALERT_WHEN_INSIDE;
+			Mode = GeoAreaMode.NONE;
 			TriggerMessage = "";
 			GeoFences = new ArrayList(1);
 		}
 
-		public GeoArea(int overseerId, int targetId)
+		public GeoArea(long overseerId, long targetId)
 		{
+			Id = -1;
 			OverseerId = overseerId;
 			TargetId = targetId;
-			Color = 0xffffff;
-			Mode = GeoAreaMode.ALERT_WHEN_INSIDE;
+			Color = DEFAULT_COLOR;
+			Mode = GeoAreaMode.NONE;
 			TriggerMessage = "";
 			GeoFences = new ArrayList(1);
 		}
 
 		public GeoArea()
 		{
+			Id = -1;
 			OverseerId = -1;
 			TargetId = -1;
-			Color = 0xffffff;
-			Mode = GeoAreaMode.ALERT_WHEN_INSIDE;
+			Color = DEFAULT_COLOR;
+			Mode = GeoAreaMode.NONE;
 			TriggerMessage = "";
 			GeoFences = new ArrayList(0);
 		}
+		public GeoArea(GeoArea toCopy) : base(toCopy) { }
 
-		public GeoArea(string geoArea, int overseerId, int targetId, bool parseId = false)
+		public GeoArea(string geoArea, long overseerId, long targetId, bool parseId = false)
 		{
 			if (!geoArea.Contains(AREA_FENCE_SEPARATOR)) throw new FormatException("GeoArea is not parsable. Passed GeoArea string: " + geoArea);
 			string[] input = geoArea.Split(AREA_FENCE_SEPARATOR);
 			string[] areaDetails = input[0].Split(AREA_DETAILS_SEPARATOR);
 			if (areaDetails.Length < 6) throw new FormatException("GeoArea is not parsable. Passed GeoArea string: " + geoArea);
 			string[] geoFences = new string[0];
-			if (input.Length > 1) {
+			if (input.Length > 1)
+			{
 				geoFences = input[1].Split(new char[] { FENCES_SEPARATOR }, StringSplitOptions.RemoveEmptyEntries);
 			}
+			// CHECK APP FOR PASSING GEOFENCES WITH ID = 0
 			if (parseId)
 			{
 				Id = int.Parse(areaDetails[0]);
+			}
+			else
+			{
+				Id = -1;
 			}
 			OverseerId = overseerId;
 			TargetId = targetId;
@@ -162,7 +182,8 @@ namespace GeofenceServer.Data
 				{
 					GeoFence geoFence = new GeoFence(geofenceStr, Id);
 					GeoFences.Add(geoFence);
-				} catch (Exception e)
+				}
+				catch (Exception e)
 				{
 					Trace.TraceError(e.Message);
 					Trace.TraceError(e.StackTrace);
@@ -190,10 +211,5 @@ namespace GeofenceServer.Data
 			}
 			return output;
 		}
-	}
-
-	public class GeoAreaDbContext : DbContext
-	{
-		public DbSet<GeoArea> Areas { get; set; }
 	}
 }
