@@ -37,35 +37,31 @@ namespace GeofenceServer.Data
         {
             if (OverseerId != DEFAULT_ID && TargetId != DEFAULT_ID)
             {
-                throw new TableEntryAlreadyExistsException("This id is already in the database. Cannot add it again.");
+                throw new TableEntryAlreadyExistsException($"This {GetType().Name} is already in the database. Cannot add it again.");
             }
 
             int nrRowsAffected = ExecuteNonQuery($"INSERT INTO {TableName} (tracked_user_id, overseer_id) " +
                 $"VALUES ({TargetId}, {OverseerId});");
             if (nrRowsAffected < 1)
             {
-                throw new DatabaseException($"Failed to add TrackedUserId (target_id = {TargetId}, overseer_id = {OverseerId}) to database.");
+                throw new DatabaseException($"Failed to add {GetType().Name} (target_id = {TargetId}, overseer_id = {OverseerId}) to database.");
             }
         }
 
-        public override void Delete()
+        public override int Delete()
         {
-            int nrRowsAffected = ExecuteNonQuery($"DELETE FROM {TableName} " +
+            return ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE target_id='{TargetId}' AND overseer_id='{OverseerId}';");
-            if (nrRowsAffected < 1)
-            {
-                throw new DatabaseException($"Failed to delete TrackedUserId (target_id = {TargetId}, overseer_id = {OverseerId}) from database.");
-            }
         }
 
         public override void Save()
         {
-            throw new NotImplementedException("Save method doesn't make any sense for this type of object. Delete the object when it has the desired id's, then change the id's, then call Add().");
+            throw new NotImplementedException($"Save method doesn't make any sense for {GetType().Name}. Delete the {GetType().Name} when it has the desired id's, then change the id's, then call Add().");
         }
 
         public override void Update()
         {
-            throw new NotImplementedException("Update method doesn't make any sense for this type of object. Delete the object when it has the desired id's, then change the id's, then call Add().");
+            throw new NotImplementedException($"Update method doesn't make any sense for {GetType().Name}. Delete the {GetType().Name} when it has the desired id's, then change the id's, then call Add().");
         }
         new public static string TableName => "tracked_user_id";
     }

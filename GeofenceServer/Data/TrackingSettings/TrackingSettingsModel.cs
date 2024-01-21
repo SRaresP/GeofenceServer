@@ -28,14 +28,10 @@ namespace GeofenceServer.Data
             throw new NotImplementedException("Use the Save() method.");
         }
 
-        public override void Delete()
+        public override int Delete()
         {
-            int nrRowsAffected = ExecuteNonQuery($"DELETE FROM {TableName} " +
+            return ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE target_id='{TargetId}' AND overseer_id='{OverseerId}';");
-            if (nrRowsAffected < 1)
-            {
-                throw new DatabaseException($"Failed to delete TrackingSettings (target_id = {TargetId}, overseer_id = {OverseerId}) from database.");
-            }
         }
 
         public override void Update()
@@ -47,7 +43,7 @@ namespace GeofenceServer.Data
         {
             if (OverseerId == DEFAULT_ID || TargetId == DEFAULT_ID)
             {
-                throw new DatabaseException("TrackingSettings composite key is missing a part.");
+                throw new DatabaseException($"{GetType().Name} composite key is missing a part.");
             }
 
             int nrRowsAffected = ExecuteNonQuery($"INSERT INTO {TableName} (overseer_id, target_id, `interval`) " +
@@ -56,7 +52,7 @@ namespace GeofenceServer.Data
                 $"`interval` = {Interval};");
             if (nrRowsAffected < 1)
             {
-                throw new DatabaseException($"Failed to save TrackingSettings (target_id = {TargetId}, overseer_id = {OverseerId}) to database.");
+                throw new DatabaseException($"Failed to save {GetType().Name} (target_id = {TargetId}, overseer_id = {OverseerId}) to database.");
             }
         }
         new public static string TableName => "tracking_settings";
@@ -73,7 +69,7 @@ namespace GeofenceServer.Data
 
             if (conditions.Count() < 1)
             {
-                throw new DatabaseException("No data available to load GeoFences by.");
+                throw new DatabaseException($"No data available to load {GetType().Name}s by.");
             }
         }
     }

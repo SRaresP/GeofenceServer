@@ -64,14 +64,14 @@ namespace GeofenceServer.Data
             int nrOfRowsAffected;
             if (Id != TrackedUserId.DEFAULT_ID)
             {
-                throw new TableEntryAlreadyExistsException("Target already exists.");
+                throw new TableEntryAlreadyExistsException($"{GetType().Name} already exists.");
             }
 
             nrOfRowsAffected = ExecuteNonQuery($"INSERT INTO {TableName} (email, name, password_hash, location_history, nr_of_code_generations) " +
                 $"VALUES ('{Email}', '{Name}', '{PasswordHash}', '{LocationHistory}', {NrOfCodeGenerations})");
             if (nrOfRowsAffected < 1)
             {
-                throw new DatabaseException($"Failed to add target (id = {Id}) to database.");
+                throw new DatabaseException($"Failed to add {GetType().Name} (id = {Id}) to database.");
             }
             this.Id = TargetUser.LastInsertedId;
         }
@@ -80,14 +80,14 @@ namespace GeofenceServer.Data
         {
             if (Id == DEFAULT_ID)
             {
-                throw new TableEntryDoesNotExistException($"Target user id to update was {DEFAULT_ID}.");
+                throw new TableEntryDoesNotExistException($"{GetType().Name} id to update was {DEFAULT_ID}.");
             }
             int nrRowsAffected = ExecuteNonQuery($"UPDATE {TableName} " +
                 $"SET email = '{Email}', name = '{Name}', password_hash = '{PasswordHash}', location_history = '{LocationHistory}', nr_of_code_generations = {NrOfCodeGenerations} " +
                 $"WHERE id = {Id};");
             if (nrRowsAffected < 1)
             {
-                throw new DatabaseException($"Failed to update target (id = {Id}) in database.");
+                throw new DatabaseException($"Failed to update {GetType().Name} (id = {Id}) in database.");
             }
         }
 
@@ -103,14 +103,10 @@ namespace GeofenceServer.Data
             }
         }
 
-        public override void Delete()
+        public override int Delete()
         {
-            int nrRowsAffected = ExecuteNonQuery($"DELETE FROM {TableName} " +
+            return ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE id = {Id};");
-            if (nrRowsAffected < 1)
-            {
-                throw new DatabaseException($"Failed to delete target (id = {Id}) from database.");
-            }
         }
     }
 }

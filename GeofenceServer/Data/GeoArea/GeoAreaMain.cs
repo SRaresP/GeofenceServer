@@ -90,10 +90,10 @@ namespace GeofenceServer.Data
 
 		public GeoArea(string geoArea, long overseerId, long targetId, bool parseId = false)
 		{
-			if (!geoArea.Contains(AREA_FENCE_SEPARATOR)) throw new FormatException("GeoArea is not parsable. Passed GeoArea string: " + geoArea);
+			if (!geoArea.Contains(AREA_FENCE_SEPARATOR)) throw new FormatException($"{GetType().Name} is not parsable. Passed ${GetType().Name} string: " + geoArea);
 			string[] input = geoArea.Split(AREA_FENCE_SEPARATOR);
 			string[] areaDetails = input[0].Split(AREA_DETAILS_SEPARATOR);
-			if (areaDetails.Length < 6) throw new FormatException("GeoArea is not parsable. Passed GeoArea string: " + geoArea);
+			if (areaDetails.Length < 6) throw new FormatException($"{GetType().Name} is not parsable. Passed {GetType().Name} string: " + geoArea);
 			string[] geoFences = new string[0];
 			if (input.Length > 1)
 			{
@@ -117,7 +117,7 @@ namespace GeofenceServer.Data
 			}
 			else
 			{
-				throw new FormatException("GeoArea is not parsable. Passed GeoArea string: " + geoArea);
+				throw new FormatException($"{GetType().Name} is not parsable. Passed {GetType().Name} string: " + geoArea);
 			}
 			TriggerMessage = areaDetails[5];
 			GeoFences = new ArrayList(geoFences.Length);

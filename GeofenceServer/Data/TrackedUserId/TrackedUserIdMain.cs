@@ -31,7 +31,7 @@ namespace GeofenceServer.Data
         {
             if (overseerId == DEFAULT_ID) 
             {
-                throw new ArgumentException($"Overseer id was {DEFAULT_ID}.");
+                throw new ArgumentException($"{GetType().Name} id was {DEFAULT_ID}.");
             }
             List<Dictionary<string, object>> results = ExecuteQuery($"SELECT * " +
                 $"FROM {TableName} " +
@@ -49,7 +49,7 @@ namespace GeofenceServer.Data
         {
             if (targetId == DEFAULT_ID)
             {
-                throw new ArgumentException($"Target id was {DEFAULT_ID}.");
+                throw new ArgumentException($"{GetType().Name} id was {DEFAULT_ID}.");
             }
             List<Dictionary<string, object>> results = ExecuteQuery($"SELECT * " +
                 $"FROM {TableName} " +
@@ -73,15 +73,15 @@ namespace GeofenceServer.Data
         {
             if (overseer == null)
             {
-                throw new ArgumentException("Passed overseer was null.");
+                throw new ArgumentException("Passed OverseerUser was null.");
             }
             if (overseer.TrackedUserIds == null)
             {
-                throw new ArgumentException("Overseer's tracked user id list was null.");
+                throw new ArgumentException("OverseerUser's TrackedUserIds list was null.");
             }
             if (overseer.TrackedUserIds.Length == 0)
             {
-                throw new ArgumentException("Overseer's tracked user id list was empty.");
+                throw new ArgumentException("OverseerUser's TrackedUserIds list was empty.");
             }
             // INSERT IGNORE inserts a new record if it doesn't already exist in this case
             string sql = $"INSERT IGNORE INTO {TableName} (overseer_id, target_id) ";
@@ -110,7 +110,7 @@ namespace GeofenceServer.Data
                 int result = ExecuteNonQuery(sql);
                 if (result < 1)
                 {
-                    throw new DatabaseException($"Failed to add TrackedUserId (overseer_id = {overseer.Id}) to database.");
+                    throw new DatabaseException($"Failed to add {GetType().Name} (overseer_id = {overseer.Id}) to database.");
                 }
             }
         }

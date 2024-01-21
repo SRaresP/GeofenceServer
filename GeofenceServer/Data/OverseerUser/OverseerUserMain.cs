@@ -32,7 +32,7 @@ namespace GeofenceServer.Data
         {
             if (Id == DEFAULT_ID)
             {
-                throw new TableEntryDoesNotExistException($"Id of overseer was {TrackedUserId.DEFAULT_ID}.");
+                throw new TableEntryDoesNotExistException($"Id of {GetType().Name} was {DEFAULT_ID}.");
             }
             TrackedUserIds = TrackedUserId.GetByOverseerId(Id);
         }

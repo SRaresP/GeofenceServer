@@ -208,7 +208,7 @@ namespace GeofenceServer.Data
         public abstract void Add();
         public abstract void Update();
         public abstract void Save();
-        public abstract void Delete();
+        public abstract int Delete();
         protected abstract void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect);
     }
 }

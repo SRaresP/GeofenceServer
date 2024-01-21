@@ -30,14 +30,10 @@ namespace GeofenceServer.Data
                 $");");
         }
 
-        public override void Delete()
+        public override int Delete()
         {
-            int nrRowsAffected = ExecuteNonQuery($"DELETE FROM {TableName} " +
+            return ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE id='{Id}';");
-            if (nrRowsAffected < 1)
-            {
-                throw new DatabaseException($"Failed to delete GeoArea (id = {Id}) from database.");
-            }
         }
 
         public override void Add()
@@ -45,14 +41,14 @@ namespace GeofenceServer.Data
             int nrOfRowsAffected;
             if (Id != DEFAULT_ID)
             {
-                throw new TableEntryAlreadyExistsException("Overseer already exists.");
+                throw new TableEntryAlreadyExistsException($"{GetType().Name} already exists.");
             }
 
             nrOfRowsAffected = ExecuteNonQuery($"INSERT INTO {TableName} (overseer_id, target_id, color, mode, trigger_message) " +
                 $"VALUES ({OverseerId}, {TargetId}, {Color}, {(int)Mode}, '{TriggerMessage}')");
             if (nrOfRowsAffected < 1)
             {
-                throw new DatabaseException($"Failed to add GeoArea (id = {Id}) to database.");
+                throw new DatabaseException($"Failed to add {GetType().Name} (id = {Id}) to database.");
             }
             this.Id = GeoArea.LastInsertedId;
         }
@@ -61,7 +57,7 @@ namespace GeofenceServer.Data
         {
             if (Id == DEFAULT_ID)
             {
-                throw new TableEntryDoesNotExistException($"GeoArea id to update was {DEFAULT_ID}.");
+                throw new TableEntryDoesNotExistException($"{GetType().Name} id to update was {DEFAULT_ID}.");
             }
             int nrRowsAffected = ExecuteNonQuery($"UPDATE {TableName} " +
                 $"SET overseer_id = {OverseerId}, " +
@@ -72,7 +68,7 @@ namespace GeofenceServer.Data
                 $"WHERE id = {Id};");
             if (nrRowsAffected < 1)
             {
-                throw new DatabaseException($"Failed to update GeoArea (id = {Id}) in database.");
+                throw new DatabaseException($"Failed to update {GetType().Name} (id = {Id}) in database.");
             }
         }
 
@@ -106,7 +102,7 @@ namespace GeofenceServer.Data
 
             if (conditions.Count() < 1)
             {
-                throw new DatabaseException("No data available to select GeoArea by.");
+                throw new DatabaseException($"No data available to select {GetType().Name} by.");
             }
         }
     }

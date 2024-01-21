@@ -27,7 +27,7 @@ namespace GeofenceServer.Data
 			string[] input = geofence.Split(FENCE_DETAILS_SEPARATOR);
 			if (input.Length < 5)
 			{
-				throw new FormatException("GeoFence is not parsable. Passed GeoFence string: " + geofence);
+				throw new FormatException($"{GetType().Name} is not parsable. Passed {GetType().Name} string: " + geofence);
 			}
 			Id = int.Parse(input[0]);
 			GeoAreaId = geoAreaId;
