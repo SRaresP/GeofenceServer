@@ -31,7 +31,7 @@ namespace GeofenceServer.Data
         {
             if (overseerId == DEFAULT_ID) 
             {
-                throw new ArgumentException($"{GetType().Name} id was {DEFAULT_ID}.");
+                throw new ArgumentException($"OverseerId was {DEFAULT_ID}.");
             }
             List<Dictionary<string, object>> results = ExecuteQuery($"SELECT * " +
                 $"FROM {TableName} " +
@@ -49,7 +49,7 @@ namespace GeofenceServer.Data
         {
             if (targetId == DEFAULT_ID)
             {
-                throw new ArgumentException($"{GetType().Name} id was {DEFAULT_ID}.");
+                throw new ArgumentException($"TargetId was {DEFAULT_ID}.");
             }
             List<Dictionary<string, object>> results = ExecuteQuery($"SELECT * " +
                 $"FROM {TableName} " +
@@ -110,7 +110,7 @@ namespace GeofenceServer.Data
                 int result = ExecuteNonQuery(sql);
                 if (result < 1)
                 {
-                    throw new DatabaseException($"Failed to add {GetType().Name} (overseer_id = {overseer.Id}) to database.");
+                    throw new DatabaseException($"Failed to add TrackedUserId (overseer_id = {overseer.Id}) to database.");
                 }
             }
         }
