@@ -8,20 +8,13 @@ namespace GeofenceServer.Data
         // Default interval in miliseconds
         // public const int  DEFAULT_INTERVAL = 1800000;
         public const int DEFAULT_INTERVAL = 3000;
-        public const int DEFAULT_ID = -1;
-
-        public TrackingSettings(long overseerId, long targetId, int interval)
-		{
-            OverseerId = overseerId;
-            TargetId = targetId;
-            Interval = interval;
-        }
 
         public TrackingSettings()
         {
-            OverseerId = -1;
-            TargetId = -1;
+            OverseerId = DEFAULT_ID;
+            TargetId = DEFAULT_ID;
             Interval = DEFAULT_INTERVAL;
         }
+        public TrackingSettings(TrackingSettings toCopy) : base(toCopy) { }
     }
 }

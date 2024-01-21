@@ -9,15 +9,9 @@ namespace GeofenceServer.Data
     {
 		public TargetCode()
 		{
-			Id = -1;
-			TargetUserId = -1;
+			Id = DEFAULT_ID;
+			TargetUserId = DEFAULT_ID;
 			Code = "-1";
-		}
-		public TargetCode(long id, string code)
-		{
-			Id = -1;
-			TargetUserId = id;
-			Code = code;
 		}
 		public TargetCode(TargetCode toCopy) : base(toCopy) { }
 	}

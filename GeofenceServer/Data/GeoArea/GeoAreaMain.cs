@@ -21,7 +21,7 @@ namespace GeofenceServer.Data
         private const char FENCES_SEPARATOR = '≈';
         private const char AREAS_SEPARATOR = '÷';
 
-        public ArrayList GeoFences { get; set; }
+		public ArrayList GeoFences { get; set; } = new ArrayList(0);
 
         public enum GeoAreaMode
 		{
@@ -29,6 +29,7 @@ namespace GeofenceServer.Data
 			ALERT_WHEN_INSIDE,
             ALERT_WHEN_OUTSIDE
 		}
+		public GeoArea() { }
 
 		public static ArrayList GetGeoAreaList(long overseerId, long targetId)
 		{
@@ -41,7 +42,7 @@ namespace GeofenceServer.Data
 				};
 				try
 				{
-					geoAreas = geoArea.LoadMultipleUsingAvailableData();
+					geoAreas = geoArea.LoadMultipleUsingAvailableData().Cast<GeoArea>().ToArray();
 				}
 				catch (TableEntryDoesNotExistException)
 				{
@@ -60,7 +61,7 @@ namespace GeofenceServer.Data
 				GeoFence[] geoFences;
 				try
 				{
-					geoFences = geoFence.LoadMultipleUsingAvailableData();
+					geoFences = geoFence.LoadMultipleUsingAvailableData().Cast<GeoFence>().ToArray();
 				}
 				catch (TableEntryDoesNotExistException)
 				{
@@ -85,61 +86,6 @@ namespace GeofenceServer.Data
 			}
 			return output;
 		}
-
-		public GeoArea(long overseerId, long targetId, int color, GeoAreaMode mode, string triggerMessage)
-		{
-			Id = -1;
-			OverseerId = overseerId;
-			TargetId = targetId;
-			Color = color;
-			Mode = mode;
-			TriggerMessage = triggerMessage;
-			GeoFences = new ArrayList(1);
-		}
-
-		public GeoArea(long overseerId, long targetId, int color, GeoAreaMode mode)
-		{
-			Id = -1;
-			OverseerId = overseerId;
-			TargetId = targetId;
-			Color = color;
-			Mode = mode;
-			TriggerMessage = "";
-			GeoFences = new ArrayList(1);
-		}
-
-		public GeoArea(long overseerId, long targetId, int color)
-		{
-			Id = -1;
-			OverseerId = overseerId;
-			TargetId = targetId;
-			Color = color;
-			Mode = GeoAreaMode.NONE;
-			TriggerMessage = "";
-			GeoFences = new ArrayList(1);
-		}
-
-		public GeoArea(long overseerId, long targetId)
-		{
-			Id = -1;
-			OverseerId = overseerId;
-			TargetId = targetId;
-			Color = DEFAULT_COLOR;
-			Mode = GeoAreaMode.NONE;
-			TriggerMessage = "";
-			GeoFences = new ArrayList(1);
-		}
-
-		public GeoArea()
-		{
-			Id = -1;
-			OverseerId = -1;
-			TargetId = -1;
-			Color = DEFAULT_COLOR;
-			Mode = GeoAreaMode.NONE;
-			TriggerMessage = "";
-			GeoFences = new ArrayList(0);
-		}
 		public GeoArea(GeoArea toCopy) : base(toCopy) { }
 
 		public GeoArea(string geoArea, long overseerId, long targetId, bool parseId = false)
@@ -153,14 +99,13 @@ namespace GeofenceServer.Data
 			{
 				geoFences = input[1].Split(new char[] { FENCES_SEPARATOR }, StringSplitOptions.RemoveEmptyEntries);
 			}
-			// CHECK APP FOR PASSING GEOFENCES WITH ID = 0
 			if (parseId)
 			{
 				Id = int.Parse(areaDetails[0]);
 			}
 			else
 			{
-				Id = -1;
+				Id = DEFAULT_ID;
 			}
 			OverseerId = overseerId;
 			TargetId = targetId;

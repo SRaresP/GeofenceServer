@@ -9,29 +9,21 @@ namespace GeofenceServer.Data
     {
         private const char FENCE_DETAILS_SEPARATOR = '⌡';
 		// Lat or lon can never get to 999.
-		private static int DEFAULT_COORD = 999;
-
-		public GeoFence(long geoAreaId, double latitude, double longitude, int radiusMeters)
-		{
-			Id = -1;
-			GeoAreaId = geoAreaId;
-			Latitude = latitude;
-			Longitude = longitude;
-			RadiusMeters = radiusMeters;
-		}
+		public static int DEFAULT_COORD = 999;
 
 		public GeoFence()
 		{
-			Id = -1;
-			GeoAreaId = -1;
+			Id = DEFAULT_ID;
+			GeoAreaId = DEFAULT_ID;
 			Latitude = DEFAULT_COORD;
 			Longitude = DEFAULT_COORD;
 			RadiusMeters = -1;
 		}
+		public GeoFence(GeoFence toCopy) : base(toCopy) { }
 
 		public GeoFence(string geofence, long geoAreaId)
 		{
-			Id = -1;
+			Id = DEFAULT_ID;
 			string[] input = geofence.Split(FENCE_DETAILS_SEPARATOR);
 			if (input.Length < 5)
 			{
@@ -43,7 +35,6 @@ namespace GeofenceServer.Data
 			Longitude = double.Parse(input[3]);
 			RadiusMeters = int.Parse(input[4]);
 		}
-		public GeoFence(GeoFence toCopy) : base(toCopy) { }
 
 		public override string ToString()
 		{

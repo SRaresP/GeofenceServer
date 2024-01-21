@@ -139,9 +139,12 @@ namespace GeofenceServer
                 catch (TableEntryDoesNotExistException)
                 {
                     CryptoHashHelper crypto = new CryptoHashHelper();
-                    user = new TargetUser(userString[0],
-                        userString[1],
-                        crypto.GetHash(userString[2]));
+                    user = new TargetUser()
+                    {
+                        Email = userString[0],
+                        Name = userString[1],
+                        PasswordHash = crypto.GetHash(userString[2])
+                    };
                     user.Save();
                     return REGISTERED;
                 }
@@ -200,7 +203,7 @@ namespace GeofenceServer
                 {
                     {
                         List<Dictionary<string, object>> result = TrackingSettings.ExecuteQuery("SELECT * " +
-                            $"FROM {TrackingSettings.GetTableName()} " +
+                            $"FROM {TrackingSettings.TableName} " +
                             $"WHERE target_id = {user.Id} " +
                             $"ORDER BY `interval` ASC " +
                             $"LIMIT 1;");
@@ -408,7 +411,7 @@ namespace GeofenceServer
                     Trace.TraceError(e.StackTrace);
                 }
                 try {
-                        GeoArea.ExecuteNonQuery($"DELETE FROM {GeoArea.GetTableName()}" +
+                        GeoArea.ExecuteNonQuery($"DELETE FROM {GeoArea.TableName}" +
                             " WHERE overseer_id = " + overseerUser.Id + " AND " +
                             "target_id = " + targetId);
                 }
@@ -709,15 +712,15 @@ namespace GeofenceServer
                 {
                     // For now only one GeoArea will be allotted to overseer-target pairs
                     // Translation: delete all GeoFences associated to this OverseerUser
-                    int affectedRows = GeoFence.ExecuteNonQuery($"DELETE FROM {GeoFence.GetTableName()}" +
+                    int affectedRows = GeoFence.ExecuteNonQuery($"DELETE FROM {GeoFence.TableName}" +
                         " WHERE geo_area_id = (" +
                         "   SELECT id " +
-                        $"  FROM {GeoArea.GetTableName()} " +
+                        $"  FROM {GeoArea.TableName} " +
                         $"  WHERE overseer_id = {overseerId} " +
                         $"  LIMIT 1" +
                         ")");
                     // Delete the pair's GeoArea
-                    affectedRows = GeoArea.ExecuteNonQuery($"DELETE FROM {GeoArea.GetTableName()}" +
+                    affectedRows = GeoArea.ExecuteNonQuery($"DELETE FROM {GeoArea.TableName}" +
                         " WHERE overseer_id = " + overseerId + " AND " +
                         "target_id = " + targetId);
                     GeoArea geoArea = new GeoArea(message[3], overseerId, targetId);

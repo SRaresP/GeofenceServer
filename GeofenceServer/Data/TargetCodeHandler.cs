@@ -45,7 +45,7 @@ namespace GeofenceServer.Data
 		{
 			try
 			{
-				TargetCode.ExecuteNonQuery($"DELETE FROM {TargetCode.GetTableName()} WHERE 1;");
+				TargetCode.ExecuteNonQuery($"DELETE FROM {TargetCode.TableName} WHERE 1;");
 			} catch (Exception e)
 			{
 				Trace.TraceError(e.Message);
@@ -62,7 +62,7 @@ namespace GeofenceServer.Data
 				};
 				try
 				{
-					TargetCode[] result = targetCode1.LoadMultipleUsingAvailableData();
+					TargetCode[] result = targetCode1.LoadMultipleUsingAvailableData().Cast<TargetCode>().ToArray();
 					int count = result.Count();
 					if (count != 0)
 					{
@@ -78,7 +78,11 @@ namespace GeofenceServer.Data
 				++user.NrOfCodeGenerations;
 				user.Save();
 
-				TargetCode newEntry = new TargetCode(user.Id, code);
+				TargetCode newEntry = new TargetCode()
+				{
+					TargetUserId = user.Id,
+					Code = code
+				};
 				newEntry.Save();
 				//1.800.000 miliseconds = 30 minutes
 				DeletionTimer timer = new DeletionTimer(1800000, newEntry);
@@ -99,7 +103,7 @@ namespace GeofenceServer.Data
 			{
 				Code = code
 			};
-			TargetCode[] results = targetCode.LoadMultipleUsingAvailableData();
+			TargetCode[] results = targetCode.LoadMultipleUsingAvailableData().Cast<TargetCode>().ToArray();
 			int resultAmount = results.Count();
 			switch (resultAmount)
 			{

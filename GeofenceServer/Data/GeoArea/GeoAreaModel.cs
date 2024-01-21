@@ -7,17 +7,17 @@ namespace GeofenceServer.Data
     public partial class GeoArea : DatabaseClient
     {
 
-        public long Id { get; set; }
-        public long OverseerId { get; set; }
-        public long TargetId { get; set; }
-        public int Color { get; set; }
-        public GeoAreaMode Mode { get; set; }
-        public string TriggerMessage { get; set; }
+        public long Id { get; set; } = DEFAULT_ID;
+        public long OverseerId { get; set; } = DEFAULT_ID;
+        public long TargetId { get; set; } = DEFAULT_ID;
+        public int Color { get; set; } = DEFAULT_COLOR;
+        public GeoAreaMode Mode { get; set; } = GeoAreaMode.NONE;
+        public string TriggerMessage { get; set; } = "";
 
         static GeoArea()
         {
             int result = ExecuteNonQuery(
-                $"CREATE TABLE IF NOT EXISTS {GetTableName()} " +
+                $"CREATE TABLE IF NOT EXISTS {TableName} " +
                 $"(id BIGINT NOT NULL AUTO_INCREMENT, " +
                 $"overseer_id BIGINT NOT NULL, " +
                 $"target_id BIGINT NOT NULL, " +
@@ -32,7 +32,7 @@ namespace GeofenceServer.Data
 
         public override void Delete()
         {
-            int nrRowsAffected = ExecuteNonQuery($"DELETE FROM {GetTableName()} " +
+            int nrRowsAffected = ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE id='{Id}';");
             if (nrRowsAffected < 1)
             {
@@ -43,12 +43,12 @@ namespace GeofenceServer.Data
         public override void Add()
         {
             int nrOfRowsAffected;
-            if (Id != -1)
+            if (Id != DEFAULT_ID)
             {
                 throw new TableEntryAlreadyExistsException("Overseer already exists.");
             }
 
-            nrOfRowsAffected = ExecuteNonQuery($"INSERT INTO {GetTableName()} (overseer_id, target_id, color, mode, trigger_message) " +
+            nrOfRowsAffected = ExecuteNonQuery($"INSERT INTO {TableName} (overseer_id, target_id, color, mode, trigger_message) " +
                 $"VALUES ({OverseerId}, {TargetId}, {Color}, {(int)Mode}, '{TriggerMessage}')");
             if (nrOfRowsAffected < 1)
             {
@@ -59,11 +59,11 @@ namespace GeofenceServer.Data
 
         public override void Update()
         {
-            if (Id == -1)
+            if (Id == DEFAULT_ID)
             {
-                throw new TableEntryDoesNotExistException($"GeoArea id to update was -1.");
+                throw new TableEntryDoesNotExistException($"GeoArea id to update was {DEFAULT_ID}.");
             }
-            int nrRowsAffected = ExecuteNonQuery($"UPDATE {GetTableName()} " +
+            int nrRowsAffected = ExecuteNonQuery($"UPDATE {TableName} " +
                 $"SET overseer_id = {OverseerId}, " +
                 $"target_id = {TargetId}, " +
                 $"color = {Color}, " +
@@ -78,7 +78,7 @@ namespace GeofenceServer.Data
 
         public override void Save()
         {
-            if (Id == -1)
+            if (Id == DEFAULT_ID)
             {
                 Add();
             }
@@ -87,19 +87,15 @@ namespace GeofenceServer.Data
                 Update();
             }
         }
+        new public static string TableName => "geo_area";
 
-        public static string GetTableName()
+        protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)
         {
-            return "geo_area";
-        }
-
-        protected void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)
-        {
-            if (Id != -1) conditions.Add($"id = {Id}");
+            if (Id != DEFAULT_ID) conditions.Add($"id = {Id}");
             else columnsToSelect.Add($"id");
-            if (OverseerId != -1) conditions.Add($"overseer_id = {OverseerId}");
+            if (OverseerId != DEFAULT_ID) conditions.Add($"overseer_id = {OverseerId}");
             else columnsToSelect.Add($"overseer_id");
-            if (TargetId != -1) conditions.Add($"target_id = {TargetId}");
+            if (TargetId != DEFAULT_ID) conditions.Add($"target_id = {TargetId}");
             else columnsToSelect.Add($"target_id");
             if (Color != DEFAULT_COLOR) conditions.Add($"color = {Color}");
             else columnsToSelect.Add($"color");
@@ -112,59 +108,6 @@ namespace GeofenceServer.Data
             {
                 throw new DatabaseException("No data available to select GeoArea by.");
             }
-        }
-
-        public override void LoadUsingAvailableData()
-        {
-            List<string> columnsToSelect = new List<string>(1);
-            List<string> conditions = new List<string>(1);
-            AddConditionsAndSelects(conditions, columnsToSelect);
-
-            string sql = $"SELECT {String.Join(", ", columnsToSelect)} " +
-                $"FROM {GetTableName()} " +
-                $"WHERE {String.Join(" AND ", conditions)} " +
-                "LIMIT 2;";
-            List<Dictionary<string, object>> results = ExecuteQuery(sql);
-
-            if (results.Count() < 1)
-            {
-                throw new TableEntryDoesNotExistException("GeoArea not found in database.");
-            }
-
-            foreach (string columnSelected in columnsToSelect)
-            {
-                this[ColumnNameToPropertyName(CleanColumnName(columnSelected))] = results[0][CleanColumnName(columnSelected)];
-            }
-        }
-
-        public GeoArea[] LoadMultipleUsingAvailableData()
-        {
-            List<string> columnsToSelect = new List<string>(1);
-            List<string> conditions = new List<string>(1);
-            AddConditionsAndSelects(conditions, columnsToSelect);
-
-            string sql = $"SELECT {String.Join(", ", columnsToSelect)} " +
-                $"FROM {GetTableName()} " +
-                $"WHERE {String.Join(" AND ", conditions)};";
-            List<Dictionary<string, object>> results = ExecuteQuery(sql);
-
-            int resultCount = results.Count();
-            if (resultCount < 1)
-            {
-                throw new TableEntryDoesNotExistException("No GeoArea found in database.");
-            }
-
-            GeoArea[] geoAreas = new GeoArea[resultCount];
-            for (int geoAreaIndex = 0; geoAreaIndex < resultCount; ++geoAreaIndex)
-            {
-                geoAreas[geoAreaIndex] = new GeoArea(this);
-                for (int columnIndex = 0; columnIndex < columnsToSelect.Count(); ++columnIndex)
-                {
-                    string cleanColName = CleanColumnName(columnsToSelect[columnIndex]);
-                    geoAreas[geoAreaIndex][ColumnNameToPropertyName(cleanColName)] = results[0][cleanColName];
-                }
-            }
-            return geoAreas;
         }
     }
 }

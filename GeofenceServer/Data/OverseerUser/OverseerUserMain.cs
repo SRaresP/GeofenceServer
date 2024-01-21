@@ -7,23 +7,16 @@ namespace GeofenceServer.Data
 {
     public partial class OverseerUser : DatabaseClient
     {
-        public OverseerUser(string Email, string Name, string PasswordHash) : base()
-        {
-            this.Id = -1;
-            this.Email = Email;
-            this.Name = Name;
-            this.PasswordHash = PasswordHash;
-            TrackedUserIds = Enumerable.Repeat(TrackedUserId.DEFAULT_ID, 10).ToArray();
-        }
 
         public OverseerUser() : base()
         {
-            Id = -1;
+            Id = DEFAULT_ID;
             Email = "";
             Name = "";
             PasswordHash = "";
             TrackedUserIds = Enumerable.Repeat(TrackedUserId.DEFAULT_ID, 10).ToArray();
         }
+        public OverseerUser(OverseerUser toCopy) : base(toCopy) { }
 
         public bool AddTrackedUser(long targetId)
         {
@@ -37,7 +30,7 @@ namespace GeofenceServer.Data
 
         public void LoadTrackedUserIds()
         {
-            if (Id == -1)
+            if (Id == DEFAULT_ID)
             {
                 throw new TableEntryDoesNotExistException($"Id of overseer was {TrackedUserId.DEFAULT_ID}.");
             }

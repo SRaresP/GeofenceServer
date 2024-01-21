@@ -7,22 +7,16 @@ namespace GeofenceServer.Data
 {
     public partial class TrackedUserId : DatabaseClient
     {
-        public static long DEFAULT_ID = -1;
         public TrackedUserId() : base() {
             TargetId = DEFAULT_ID;
             OverseerId = DEFAULT_ID;
         }
-
-        public TrackedUserId(int targetId, int overseerId) : base()
-        {
-            TargetId = targetId;
-            OverseerId = overseerId;
-        }
+        public TrackedUserId(TrackedUserId toCopy) : base(toCopy) { }
 
         public static void CleanupByOverseer(OverseerUser overseer)
         {
             string trackedUserIds = String.Join(", ", overseer.TrackedUserIds);
-            ExecuteNonQuery($"DELETE FROM {GetTableName()} " +
+            ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE overseer_id = {overseer.Id} AND " +
                 $"target_id NOT IN ({trackedUserIds});");
         }
@@ -40,7 +34,7 @@ namespace GeofenceServer.Data
                 throw new ArgumentException($"Overseer id was {DEFAULT_ID}.");
             }
             List<Dictionary<string, object>> results = ExecuteQuery($"SELECT * " +
-                $"FROM {GetTableName()} " +
+                $"FROM {TableName} " +
                 $"WHERE overseer_id = {overseerId};");
             long[] trackedUserIds = Enumerable.Repeat(DEFAULT_ID, 10).ToArray();
             for (int index = 0; index < results.Count && index < trackedUserIds.Count(); ++index)
@@ -58,7 +52,7 @@ namespace GeofenceServer.Data
                 throw new ArgumentException($"Target id was {DEFAULT_ID}.");
             }
             List<Dictionary<string, object>> results = ExecuteQuery($"SELECT * " +
-                $"FROM {GetTableName()} " +
+                $"FROM {TableName} " +
                 $"WHERE target_id = {targetId};");
             long[] trackedUserIds = new long[results.Count];
             for (int index = 0; index < results.Count; ++index)
@@ -71,7 +65,7 @@ namespace GeofenceServer.Data
 
         public static void DeleteByOverseer(long overseerId)
         {
-            int result = ExecuteNonQuery($"DELETE FROM {GetTableName()} " +
+            int result = ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE overseer_id = {overseerId}");
         }
 
@@ -90,7 +84,7 @@ namespace GeofenceServer.Data
                 throw new ArgumentException("Overseer's tracked user id list was empty.");
             }
             // INSERT IGNORE inserts a new record if it doesn't already exist in this case
-            string sql = $"INSERT IGNORE INTO {GetTableName()} (overseer_id, target_id) ";
+            string sql = $"INSERT IGNORE INTO {TableName} (overseer_id, target_id) ";
             int index = 0;
             bool runQuery = false;
             for (; index < overseer.TrackedUserIds.Length; ++index)

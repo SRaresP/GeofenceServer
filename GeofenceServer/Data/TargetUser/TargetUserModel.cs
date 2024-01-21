@@ -18,7 +18,7 @@ namespace GeofenceServer.Data
         {
             try
             {
-                string sql = $"CREATE TABLE IF NOT EXISTS {GetTableName()} " +
+                string sql = $"CREATE TABLE IF NOT EXISTS {TableName} " +
                     $"(id BIGINT NOT NULL AUTO_INCREMENT, " +
                     $"email VARCHAR(50) NOT NULL, " +
                     $"name VARCHAR(50), " +
@@ -36,17 +36,11 @@ namespace GeofenceServer.Data
                 Trace.TraceWarning(e.StackTrace);
             }
         }
+        new public static string TableName => "target_user";
 
-        public static string GetTableName()
+        protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)
         {
-            return "target_user";
-        }
-
-        public override void LoadUsingAvailableData()
-        {
-            List<string> columnsToSelect = new List<string>(1);
-            List<string> conditions = new List<string>(1);
-            if (Id != -1) conditions.Add($"id = {Id}");
+            if (Id != DEFAULT_ID) conditions.Add($"id = {Id}");
             else columnsToSelect.Add($"id");
             if (Email != "") conditions.Add($"email = '{Email}'");
             else columnsToSelect.Add("email");
@@ -61,23 +55,7 @@ namespace GeofenceServer.Data
 
             if (conditions.Count() < 1)
             {
-                throw new DatabaseException("No data available to load target user by.");
-            }
-
-            string sql = $"SELECT {String.Join(", ", columnsToSelect)} " +
-                $"FROM {GetTableName()} " +
-                $"WHERE {String.Join(" AND ", conditions)} " +
-                "LIMIT 2;";
-            List<Dictionary<string, object>> results = ExecuteQuery(sql);
-
-            if (results.Count() < 1)
-            {
-                throw new TableEntryDoesNotExistException("Target user not found in database.");
-            }
-
-            foreach (string columnSelected in columnsToSelect)
-            {
-                this[ColumnNameToPropertyName(columnSelected)] = results[0][columnSelected];
+                throw new DatabaseException($"No data available to load {this.GetType().Name}s by.");
             }
         }
 
@@ -89,7 +67,7 @@ namespace GeofenceServer.Data
                 throw new TableEntryAlreadyExistsException("Target already exists.");
             }
 
-            nrOfRowsAffected = ExecuteNonQuery($"INSERT INTO {GetTableName()} (email, name, password_hash, location_history, nr_of_code_generations) " +
+            nrOfRowsAffected = ExecuteNonQuery($"INSERT INTO {TableName} (email, name, password_hash, location_history, nr_of_code_generations) " +
                 $"VALUES ('{Email}', '{Name}', '{PasswordHash}', '{LocationHistory}', {NrOfCodeGenerations})");
             if (nrOfRowsAffected < 1)
             {
@@ -100,11 +78,11 @@ namespace GeofenceServer.Data
 
         public override void Update()
         {
-            if (Id == -1)
+            if (Id == DEFAULT_ID)
             {
-                throw new TableEntryDoesNotExistException($"Target user id to update was -1.");
+                throw new TableEntryDoesNotExistException($"Target user id to update was {DEFAULT_ID}.");
             }
-            int nrRowsAffected = ExecuteNonQuery($"UPDATE {GetTableName()} " +
+            int nrRowsAffected = ExecuteNonQuery($"UPDATE {TableName} " +
                 $"SET email = '{Email}', name = '{Name}', password_hash = '{PasswordHash}', location_history = '{LocationHistory}', nr_of_code_generations = {NrOfCodeGenerations} " +
                 $"WHERE id = {Id};");
             if (nrRowsAffected < 1)
@@ -115,7 +93,7 @@ namespace GeofenceServer.Data
 
         public override void Save()
         {
-            if (Id == -1)
+            if (Id == DEFAULT_ID)
             {
                 Add();
             }
@@ -127,7 +105,7 @@ namespace GeofenceServer.Data
 
         public override void Delete()
         {
-            int nrRowsAffected = ExecuteNonQuery($"DELETE FROM {GetTableName()} " +
+            int nrRowsAffected = ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE id = {Id};");
             if (nrRowsAffected < 1)
             {

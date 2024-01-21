@@ -15,6 +15,8 @@ namespace GeofenceServer.Data
         protected static MySqlConnection Connection;
         protected static string ConnectionCredentials;
         protected static long LastInsertedId;
+        public static string TableName { get; }
+        public static long DEFAULT_ID = -1;
         static DatabaseClient()
         {
             string dbAddress = ConfigurationManager.AppSettings.Get("database_host");
@@ -36,7 +38,7 @@ namespace GeofenceServer.Data
                 $"Password={dbPassword};" +
                 $"Database={dbName}";
 
-            // I don't think this thing ever throws any errors I can check, but if you see this I was probably wrong
+            // I don't think this thing ever throws any errors I can check, but if you see this I was probably wrong.
             Connection = new MySqlConnection(ConnectionCredentials);
         }
 
@@ -150,12 +152,63 @@ namespace GeofenceServer.Data
             return Regex.Replace(columnName, "(^|_)(.?)", match => match.Groups[2].Value.ToUpper());
         }
 
+        public virtual void LoadUsingAvailableData()
+        {
+            List<string> columnsToSelect = new List<string>(1);
+            List<string> conditions = new List<string>(1);
+            AddConditionsAndSelects(conditions, columnsToSelect);
+
+            string sql = $"SELECT {String.Join(", ", columnsToSelect)} " +
+                $"FROM {this.GetType().GetProperty("TableName").GetValue(this)} " +
+                $"WHERE {String.Join(" AND ", conditions)} " +
+                "LIMIT 2;";
+            List<Dictionary<string, object>> results = ExecuteQuery(sql);
+
+            if (results.Count() < 1)
+            {
+                throw new TableEntryDoesNotExistException($"{this.GetType().Name} not found in database.");
+            }
+
+            foreach (string columnSelected in columnsToSelect)
+            {
+                this[ColumnNameToPropertyName(CleanColumnName(columnSelected))] = results[0][CleanColumnName(columnSelected)];
+            }
+        }
+
+        public virtual DatabaseClient[] LoadMultipleUsingAvailableData()
+        {
+            List<string> columnsToSelect = new List<string>(1);
+            List<string> conditions = new List<string>(1);
+            AddConditionsAndSelects(conditions, columnsToSelect);
+
+            string sql = $"SELECT {String.Join(", ", columnsToSelect)} " +
+                $"FROM {this.GetType().GetProperty("TableName").GetValue(this)} " +
+                $"WHERE {String.Join(" AND ", conditions)};";
+            List<Dictionary<string, object>> results = ExecuteQuery(sql);
+
+            int resultCount = results.Count();
+            if (resultCount < 1)
+            {
+                throw new TableEntryDoesNotExistException($"No {this.GetType().Name} found in database.");
+            }
+
+            DatabaseClient[] data = new DatabaseClient[resultCount];
+            for (int dataIndex = 0; dataIndex < resultCount; ++dataIndex)
+            {
+                data[dataIndex] = Activator.CreateInstance(this.GetType(), this) as DatabaseClient;
+                for (int columnIndex = 0; columnIndex < columnsToSelect.Count(); ++columnIndex)
+                {
+                    string cleanColName = CleanColumnName(columnsToSelect[columnIndex]);
+                    data[dataIndex][ColumnNameToPropertyName(cleanColName)] = results[dataIndex][cleanColName];
+                }
+            }
+            return data;
+        }
+
         public abstract void Add();
         public abstract void Update();
         public abstract void Save();
         public abstract void Delete();
-        public abstract void LoadUsingAvailableData();
-        // ceva_super_tare
-        // CevaSuperTare
+        protected abstract void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect);
     }
 }
