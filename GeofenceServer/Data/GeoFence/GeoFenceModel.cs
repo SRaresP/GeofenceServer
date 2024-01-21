@@ -7,6 +7,7 @@ namespace GeofenceServer.Data
 {
     public partial class GeoFence : DatabaseClient
     {
+        new public static string TableName => "geo_fence";
         public long Id { get; set; } = DEFAULT_ID;
         public long GeoAreaId { get; set; }
         public double Latitude { get; set; }
@@ -36,7 +37,6 @@ namespace GeofenceServer.Data
                 Trace.TraceWarning(e.StackTrace);
             }
         }
-        new public static string TableName => "geo_fence";
 
         protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)
         {
@@ -105,6 +105,11 @@ namespace GeofenceServer.Data
         {
             return ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE id = {Id};");
+        }
+
+        public override bool IsLoaded()
+        {
+            return Id != DEFAULT_ID;
         }
     }
 }

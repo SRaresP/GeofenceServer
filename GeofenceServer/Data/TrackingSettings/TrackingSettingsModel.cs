@@ -6,6 +6,7 @@ namespace GeofenceServer.Data
 {
     public partial class TrackingSettings : DatabaseClient
     {
+        new public static string TableName => "tracking_settings";
         public long OverseerId { get; set; }
         public long TargetId { get; set; }
         public int Interval { get; set; }
@@ -55,7 +56,6 @@ namespace GeofenceServer.Data
                 throw new DatabaseException($"Failed to save {GetType().Name} (target_id = {TargetId}, overseer_id = {OverseerId}) to database.");
             }
         }
-        new public static string TableName => "tracking_settings";
 
         protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)
         {
@@ -71,6 +71,11 @@ namespace GeofenceServer.Data
             {
                 throw new DatabaseException($"No data available to load {GetType().Name}s by.");
             }
+        }
+
+        public override bool IsLoaded()
+        {
+            return (TargetId != DEFAULT_ID) && (OverseerId != DEFAULT_ID);
         }
     }
 }

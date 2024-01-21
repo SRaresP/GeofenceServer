@@ -81,11 +81,8 @@ namespace GeofenceServer
                 string email = userString[0];
                 TargetUser user = new TargetUser();
                 user.Email = email;
-                try
-                {
-                    user.LoadUsingAvailableData();
-                }
-                catch (TableEntryDoesNotExistException)
+                user.LoadUsingAvailableData();
+                if (!user.IsLoaded())
                 {
                     return NOT_FOUND;
                 }
@@ -106,11 +103,8 @@ namespace GeofenceServer
                 string email = userString[0];
                 OverseerUser user = new OverseerUser();
                 user.Email = email;
-                try
-                {
-                    user.LoadUsingAvailableData();
-                }
-                catch (TableEntryDoesNotExistException)
+                user.LoadUsingAvailableData();
+                if (!user.IsLoaded())
                 {
                     return NOT_FOUND;
                 }
@@ -131,23 +125,20 @@ namespace GeofenceServer
                 string mail = userString[0];
                 TargetUser user = new TargetUser();
                 user.Email = mail;
-                try
+                user.LoadUsingAvailableData();
+                if (user.IsLoaded())
                 {
-                    user.LoadUsingAvailableData();
                     return EMAIL_ALREADY_TAKEN;
                 }
-                catch (TableEntryDoesNotExistException)
+                CryptoHashHelper crypto = new CryptoHashHelper();
+                user = new TargetUser()
                 {
-                    CryptoHashHelper crypto = new CryptoHashHelper();
-                    user = new TargetUser()
-                    {
-                        Email = userString[0],
-                        Name = userString[1],
-                        PasswordHash = crypto.GetHash(userString[2])
-                    };
-                    user.Save();
-                    return REGISTERED;
-                }
+                    Email = userString[0],
+                    Name = userString[1],
+                    PasswordHash = crypto.GetHash(userString[2])
+                };
+                user.Save();
+                return REGISTERED;
             }
             public static string RegisterOverseer(string[] message)
             {
@@ -155,12 +146,11 @@ namespace GeofenceServer
                 string mail = userString[0];
                 OverseerUser user = new OverseerUser();
                 user.Email = mail;
-                try
+                user.LoadUsingAvailableData();
+                if (user.IsLoaded())
                 {
-                    user.LoadUsingAvailableData();
                     return EMAIL_ALREADY_TAKEN;
                 }
-                catch (TableEntryDoesNotExistException) { }
                 CryptoHashHelper crypto = new CryptoHashHelper();
                 userString[2] = crypto.GetHash(userString[2]);
                 user.Name = userString[1];
@@ -185,11 +175,8 @@ namespace GeofenceServer
                 string mail = userString[0];
                 TargetUser user = new TargetUser();
                 user.Email = mail;
-                try
-                {
-                    user.LoadUsingAvailableData();
-                }
-                catch (TableEntryDoesNotExistException)
+                user.LoadUsingAvailableData();
+                if (!user.IsLoaded())
                 {
                     return NOT_FOUND;
                 }
@@ -231,11 +218,8 @@ namespace GeofenceServer
                 string mail = userString[0];
                 TargetUser user = new TargetUser();
                 user.Email = mail;
-                try
-                {
-                    user.LoadUsingAvailableData();
-                }
-                catch (TableEntryDoesNotExistException)
+                user.LoadUsingAvailableData();
+                if (!user.IsLoaded())
                 {
                     return NOT_FOUND;
                 }
@@ -256,11 +240,8 @@ namespace GeofenceServer
                         string email = message[1].Split(USER_SEPARATOR)[0];
                         OverseerUser overseer = new OverseerUser();
                         overseer.Email = email;
-                        try
-                        {
-                            overseer.LoadUsingAvailableData();
-                        }
-                        catch (TableEntryDoesNotExistException)
+                        overseer.LoadUsingAvailableData();
+                        if (!overseer.IsLoaded())
                         {
                             return NOT_FOUND;
                         }
@@ -314,6 +295,10 @@ namespace GeofenceServer
                 OverseerUser overseer = new OverseerUser();
                 overseer.Email = email;
                 overseer.LoadUsingAvailableData();
+                if (!overseer.IsLoaded())
+                {
+                    throw new TableEntryDoesNotExistException($"Failed to load {overseer.GetType().Name} after the login for it was successful. Check this ASAP.");
+                }
                 overseerId = overseer.Id;
 
                 try
@@ -333,15 +318,9 @@ namespace GeofenceServer
                         OverseerId = overseerId,
                         TargetId = targetId
                     };
-                    try
-                    {
-                        settings.LoadUsingAvailableData();
-                        interval = settings.Interval;
-                    }
-                    catch (Exception)
-                    {
-                        interval = TrackingSettings.DEFAULT_INTERVAL;
-                    }
+                    settings.LoadUsingAvailableData();
+                    // Interval will be DEFAULT_INTERVAL regardless if it's successfully loaded or not.
+                    interval = settings.Interval;
                 }
                 catch (Exception e)
                 {
@@ -354,11 +333,8 @@ namespace GeofenceServer
 
                 TargetUser targetUser = new TargetUser();
                 targetUser.Id = targetId;
-                try
-                {
-                    targetUser.LoadUsingAvailableData();
-                }
-                catch (TableEntryDoesNotExistException)
+                targetUser.LoadUsingAvailableData();
+                if (!overseer.IsLoaded())
                 {
                     return NOT_FOUND;
                 }
@@ -386,6 +362,10 @@ namespace GeofenceServer
                 OverseerUser overseerUser = new OverseerUser();
                 overseerUser.Email = userEmail;
                 overseerUser.LoadUsingAvailableData();
+                if (!overseerUser.IsLoaded())
+                {
+                    throw new TableEntryDoesNotExistException($"Failed to load {overseerUser.GetType().Name} after the login for it was successful. Check this ASAP.");
+                }
 
                 string id = message[2].Trim();
                 int targetId = int.Parse(id);
@@ -396,14 +376,7 @@ namespace GeofenceServer
                         OverseerId = overseerUser.Id,
                         TargetId = targetId
                     };
-                    try
-                    {
-                        settings.LoadUsingAvailableData();
-                        settings.Delete();
-                    }
-                    catch (Exception)
-                    {
-                    }
+                    settings.Delete();
                 }
                 catch (Exception e)
                 {
@@ -452,6 +425,10 @@ namespace GeofenceServer
                     OverseerUser overseer = new OverseerUser();
                     overseer.Email = email;
                     overseer.LoadUsingAvailableData();
+                    if (!overseer.IsLoaded())
+                    {
+                        throw new TableEntryDoesNotExistException($"Failed to load {overseer.GetType().Name} after the login for it was successful. Check this ASAP.");
+                    }
                     overseerId = overseer.Id;
                 }
 
@@ -473,14 +450,7 @@ namespace GeofenceServer
                         OverseerId = overseerId,
                         TargetId = targetId
                     };
-                    try
-                    {
-                        settings.LoadUsingAvailableData();
-                    }
-                    catch (Exception)
-                    {
-                        return GOT_SETTINGS + COMM_SEPARATOR + TrackingSettings.DEFAULT_INTERVAL;
-                    }
+                    settings.LoadUsingAvailableData();
                     return GOT_SETTINGS + COMM_SEPARATOR + settings.Interval;
                 } catch (Exception e)
 				{
@@ -508,6 +478,10 @@ namespace GeofenceServer
                     OverseerUser overseer = new OverseerUser();
                     overseer.Email = email;
                     overseer.LoadUsingAvailableData();
+                    if (!overseer.IsLoaded())
+                    {
+                        throw new TableEntryDoesNotExistException($"Failed to load {overseer.GetType().Name} after the login for it was successful. Check this ASAP.");
+                    }
                     overseerId = overseer.Id;
                 }
 
@@ -555,6 +529,10 @@ namespace GeofenceServer
                     OverseerUser overseer = new OverseerUser();
                     overseer.Email = email;
                     overseer.LoadUsingAvailableData();
+                    if (!overseer.IsLoaded())
+                    {
+                        throw new TableEntryDoesNotExistException($"Failed to load {overseer.GetType().Name} after the login for it was successful. Check this ASAP.");
+                    }
                     overseerId = overseer.Id;
                 }
 
@@ -593,6 +571,10 @@ namespace GeofenceServer
                     OverseerUser overseer = new OverseerUser();
                     overseer.Email = email;
                     overseer.LoadUsingAvailableData();
+                    if (!overseer.IsLoaded())
+                    {
+                        throw new TableEntryDoesNotExistException($"Failed to load {overseer.GetType().Name} after the login for it was successful. Check this ASAP.");
+                    }
                     overseerId = overseer.Id;
                 }
 
@@ -607,31 +589,20 @@ namespace GeofenceServer
                 }
                 TargetUser target = new TargetUser();
                 target.Id = targetId;
-                try
-                {
-                    target.LoadUsingAvailableData();
-                }
-                catch (TableEntryDoesNotExistException)
+                target.LoadUsingAvailableData();
+                if (!target.IsLoaded())
                 {
                     return NOT_FOUND;
                 }
                 try
                 {
-
                     TrackingSettings settings = new TrackingSettings()
                     {
                         OverseerId = overseerId,
                         TargetId = targetId
                     };
-                    try
-                    {
-                        settings.LoadUsingAvailableData();
-                        interval = settings.Interval;
-                    }
-                    catch (Exception)
-                    {
-                        interval = TrackingSettings.DEFAULT_INTERVAL;
-                    }
+                    settings.LoadUsingAvailableData();
+                    interval = settings.Interval;
                 }
                 catch (Exception e)
                 {
@@ -662,6 +633,10 @@ namespace GeofenceServer
                     OverseerUser overseer = new OverseerUser();
                     overseer.Email = email;
                     overseer.LoadUsingAvailableData();
+                    if (!overseer.IsLoaded())
+                    {
+                        throw new TableEntryDoesNotExistException($"Failed to load {overseer.GetType().Name} after the login for it was successful. Check this ASAP.");
+                    }
                     overseerId = overseer.Id;
                 }
 
@@ -696,6 +671,10 @@ namespace GeofenceServer
                     OverseerUser overseer = new OverseerUser();
                     overseer.Email = email;
                     overseer.LoadUsingAvailableData();
+                    if (!overseer.IsLoaded())
+                    {
+                        throw new TableEntryDoesNotExistException($"Failed to load {overseer.GetType().Name} after the login for it was successful. Check this ASAP.");
+                    }
                     overseerId = overseer.Id;
                 }
 

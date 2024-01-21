@@ -7,6 +7,7 @@ namespace GeofenceServer.Data
 {
     public partial class OverseerUser : DatabaseClient
     {
+        new public static string TableName => "overseer_user";
         public long Id { get; set; }
         public string Email { get; set; }
         public string Name { get; set; }
@@ -34,7 +35,6 @@ namespace GeofenceServer.Data
                 Trace.TraceWarning(e.StackTrace);
             }
         }
-        new public static string TableName => "overseer_user";
 
         protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)
         {
@@ -53,10 +53,14 @@ namespace GeofenceServer.Data
             }
         }
 
-        public override void LoadUsingAvailableData()
+        public override bool LoadUsingAvailableData()
         {
-            base.LoadUsingAvailableData();
-            LoadTrackedUserIds();
+            bool success = base.LoadUsingAvailableData();
+            if (success)
+            {
+                LoadTrackedUserIds();
+            }
+            return success;
         }
 
         public override void Add()
@@ -114,6 +118,11 @@ namespace GeofenceServer.Data
                 TrackedUserId.DeleteByOverseer(Id);
             }
             return nrRowsAffected;
+        }
+
+        public override bool IsLoaded()
+        {
+            return Id != DEFAULT_ID;
         }
     }
 }

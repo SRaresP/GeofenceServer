@@ -6,7 +6,7 @@ namespace GeofenceServer.Data
 {
     public partial class GeoArea : DatabaseClient
     {
-
+        new public static string TableName => "geo_area";
         public long Id { get; set; } = DEFAULT_ID;
         public long OverseerId { get; set; } = DEFAULT_ID;
         public long TargetId { get; set; } = DEFAULT_ID;
@@ -83,7 +83,11 @@ namespace GeofenceServer.Data
                 Update();
             }
         }
-        new public static string TableName => "geo_area";
+
+        public override bool IsLoaded()
+        {
+            return Id != DEFAULT_ID;
+        }
 
         protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)
         {

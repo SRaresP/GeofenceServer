@@ -5,6 +5,7 @@ namespace GeofenceServer.Data
 {
     public partial class TrackedUserId : DatabaseClient
     {
+        new public static string TableName => "tracked_user_id";
         public long TargetId;
         public long OverseerId;
 
@@ -63,6 +64,10 @@ namespace GeofenceServer.Data
         {
             throw new NotImplementedException($"Update method doesn't make any sense for {GetType().Name}. Delete the {GetType().Name} when it has the desired id's, then change the id's, then call Add().");
         }
-        new public static string TableName => "tracked_user_id";
+
+        public override bool IsLoaded()
+        {
+            return (TargetId != DEFAULT_ID) && (OverseerId != DEFAULT_ID);
+        }
     }
 }

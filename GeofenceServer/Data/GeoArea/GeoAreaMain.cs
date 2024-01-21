@@ -40,14 +40,7 @@ namespace GeofenceServer.Data
 					OverseerId = overseerId,
 					TargetId = targetId
 				};
-				try
-				{
-					geoAreas = geoArea.LoadMultipleUsingAvailableData().Cast<GeoArea>().ToArray();
-				}
-				catch (TableEntryDoesNotExistException)
-				{
-					geoAreas = new GeoArea[0];
-				}
+				geoAreas = geoArea.LoadMultipleUsingAvailableData().Cast<GeoArea>().ToArray();
 			}
 
 			ArrayList geoAreaList = new ArrayList(1);
@@ -58,15 +51,7 @@ namespace GeofenceServer.Data
 				{
 					GeoAreaId = geoArea.Id
 				};
-				GeoFence[] geoFences;
-				try
-				{
-					geoFences = geoFence.LoadMultipleUsingAvailableData().Cast<GeoFence>().ToArray();
-				}
-				catch (TableEntryDoesNotExistException)
-				{
-					geoFences = new GeoFence[0];
-				}
+				GeoFence[] geoFences = geoFence.LoadMultipleUsingAvailableData().Cast<GeoFence>().ToArray();
 				foreach (GeoFence geoF in geoFences)
 				{
 					geoArea.GeoFences.Add(geoF);

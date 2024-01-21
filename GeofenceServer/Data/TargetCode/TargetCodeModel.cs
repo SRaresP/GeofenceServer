@@ -7,6 +7,7 @@ namespace GeofenceServer.Data
 {
     public partial class TargetCode : DatabaseClient
     {
+        new public static string TableName => "target_code";
         public long Id { get; set; }
         public long TargetUserId { get; set; }
         public string Code { get; set; }
@@ -30,8 +31,6 @@ namespace GeofenceServer.Data
                 Trace.TraceWarning(e.StackTrace);
             }
         }
-
-        new public static string TableName => "target_code";
 
         protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)
         {
@@ -96,6 +95,11 @@ namespace GeofenceServer.Data
         {
             return ExecuteNonQuery($"DELETE FROM {TableName} " +
                 $"WHERE id = {Id};");
+        }
+
+        public override bool IsLoaded()
+        {
+            return Id != DEFAULT_ID;
         }
     }
 }

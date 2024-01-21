@@ -152,7 +152,7 @@ namespace GeofenceServer.Data
             return Regex.Replace(columnName, "(^|_)(.?)", match => match.Groups[2].Value.ToUpper());
         }
 
-        public virtual void LoadUsingAvailableData()
+        public virtual bool LoadUsingAvailableData()
         {
             List<string> columnsToSelect = new List<string>(1);
             List<string> conditions = new List<string>(1);
@@ -161,18 +161,21 @@ namespace GeofenceServer.Data
             string sql = $"SELECT {String.Join(", ", columnsToSelect)} " +
                 $"FROM {this.GetType().GetProperty("TableName").GetValue(this)} " +
                 $"WHERE {String.Join(" AND ", conditions)} " +
-                "LIMIT 2;";
+                "LIMIT 1;";
+
             List<Dictionary<string, object>> results = ExecuteQuery(sql);
 
             if (results.Count() < 1)
             {
-                throw new TableEntryDoesNotExistException($"{this.GetType().Name} not found in database.");
+                return false;
             }
 
             foreach (string columnSelected in columnsToSelect)
             {
                 this[ColumnNameToPropertyName(CleanColumnName(columnSelected))] = results[0][CleanColumnName(columnSelected)];
             }
+
+            return true;
         }
 
         public virtual DatabaseClient[] LoadMultipleUsingAvailableData()
@@ -184,15 +187,12 @@ namespace GeofenceServer.Data
             string sql = $"SELECT {String.Join(", ", columnsToSelect)} " +
                 $"FROM {this.GetType().GetProperty("TableName").GetValue(this)} " +
                 $"WHERE {String.Join(" AND ", conditions)};";
+
             List<Dictionary<string, object>> results = ExecuteQuery(sql);
 
             int resultCount = results.Count();
-            if (resultCount < 1)
-            {
-                throw new TableEntryDoesNotExistException($"No {this.GetType().Name} found in database.");
-            }
-
             DatabaseClient[] data = new DatabaseClient[resultCount];
+
             for (int dataIndex = 0; dataIndex < resultCount; ++dataIndex)
             {
                 data[dataIndex] = Activator.CreateInstance(this.GetType(), this) as DatabaseClient;
@@ -202,6 +202,7 @@ namespace GeofenceServer.Data
                     data[dataIndex][ColumnNameToPropertyName(cleanColName)] = results[dataIndex][cleanColName];
                 }
             }
+
             return data;
         }
 
@@ -209,6 +210,7 @@ namespace GeofenceServer.Data
         public abstract void Update();
         public abstract void Save();
         public abstract int Delete();
+        public abstract bool IsLoaded();
         protected abstract void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect);
     }
 }

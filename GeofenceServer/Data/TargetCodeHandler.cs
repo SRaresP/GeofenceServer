@@ -60,19 +60,11 @@ namespace GeofenceServer.Data
 				{
 					TargetUserId = user.Id
 				};
-				try
+				TargetCode[] result = targetCode1.LoadMultipleUsingAvailableData().Cast<TargetCode>().ToArray();
+				foreach (TargetCode targetCode in result)
 				{
-					TargetCode[] result = targetCode1.LoadMultipleUsingAvailableData().Cast<TargetCode>().ToArray();
-					int count = result.Count();
-					if (count != 0)
-					{
-						foreach (TargetCode targetCode in result)
-						{
-							targetCode.Delete();
-						}
-					}
+					targetCode.Delete();
 				}
-				catch (TableEntryDoesNotExistException) { }
 				string toHash = user.Email + user.NrOfCodeGenerations;
 				code = Crypto.GetHash(toHash).Substring(0, CODE_LENGTH).ToUpper();
 				++user.NrOfCodeGenerations;
@@ -104,8 +96,7 @@ namespace GeofenceServer.Data
 				Code = code
 			};
 			TargetCode[] results = targetCode.LoadMultipleUsingAvailableData().Cast<TargetCode>().ToArray();
-			int resultAmount = results.Count();
-			switch (resultAmount)
+			switch (results.Count())
 			{
 				case 0:
 					throw new KeyNotFoundException("User matching passed unique code was not found.");
