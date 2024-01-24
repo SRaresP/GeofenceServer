@@ -14,22 +14,14 @@ namespace GeofenceServer.Data
 
         static TargetCode()
         {
-            try
-            {
-                string sql = $"CREATE TABLE IF NOT EXISTS {TableName} " +
-                    $"(id BIGINT NOT NULL AUTO_INCREMENT, " +
-                    $"target_user_id BIGINT NOT NULL, " +
-                    $"code CHAR(8) NOT NULL, " +
-                    $"PRIMARY KEY (id), " +
-                    $"FOREIGN KEY(target_user_id) REFERENCES target_user(id)" +
-                    $");";
-                ExecuteNonQuery(sql);
-            }
-            catch (Exception e)
-            {
-                Trace.TraceWarning(e.Message);
-                Trace.TraceWarning(e.StackTrace);
-            }
+            string sql = $"CREATE TABLE IF NOT EXISTS {TableName} " +
+                $"(id BIGINT NOT NULL AUTO_INCREMENT, " +
+                $"target_user_id BIGINT NOT NULL, " +
+                $"code CHAR(8) NOT NULL, " +
+                $"PRIMARY KEY (id), " +
+                $"FOREIGN KEY(target_user_id) REFERENCES target_user(id)" +
+                $");";
+            ExecuteNonQuery(sql);
         }
 
         protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)

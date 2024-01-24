@@ -17,23 +17,15 @@ namespace GeofenceServer.Data
 
         static OverseerUser()
         {
-            try
-            {
-                string sql = $"CREATE TABLE IF NOT EXISTS {TableName} " +
-                    $"(id INTEGER NOT NULL AUTO_INCREMENT, " +
-                    $"email VARCHAR(50) NOT NULL, " +
-                    $"name VARCHAR(50), " +
-                    $"password_hash VARCHAR(250) NOT NULL, " +
-                    $"PRIMARY KEY (id), " +
-                    $"UNIQUE (email)" +
-                    $");";
-                ExecuteNonQuery(sql);
-            }
-            catch (Exception e)
-            {
-                Trace.TraceWarning(e.Message);
-                Trace.TraceWarning(e.StackTrace);
-            }
+            string sql = $"CREATE TABLE IF NOT EXISTS {TableName} " +
+                $"(id INTEGER NOT NULL AUTO_INCREMENT, " +
+                $"email VARCHAR(50) NOT NULL, " +
+                $"name VARCHAR(50), " +
+                $"password_hash VARCHAR(250) NOT NULL, " +
+                $"PRIMARY KEY (id), " +
+                $"UNIQUE (email)" +
+                $");";
+            ExecuteNonQuery(sql);
         }
 
         protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)

@@ -108,16 +108,8 @@ namespace GeofenceServer.Data
 			GeoFences = new ArrayList(geoFences.Length);
 			foreach (string geofenceStr in geoFences)
 			{
-				try
-				{
-					GeoFence geoFence = new GeoFence(geofenceStr, Id);
-					GeoFences.Add(geoFence);
-				}
-				catch (Exception e)
-				{
-					Trace.TraceError(e.Message);
-					Trace.TraceError(e.StackTrace);
-				}
+				GeoFence geoFence = new GeoFence(geofenceStr, Id);
+				GeoFences.Add(geoFence);
 			}
 		}
 

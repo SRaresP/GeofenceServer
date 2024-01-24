@@ -186,29 +186,18 @@ namespace GeofenceServer
 				}
                 user.LocationHistory = LocationHandler.AddLocation(user.LocationHistory, locationString);
                 user.Save();
-                try
+                List<Dictionary<string, object>> result = TrackingSettings.ExecuteQuery("SELECT * " +
+                    $"FROM {TrackingSettings.TableName} " +
+                    $"WHERE target_id = {user.Id} " +
+                    $"ORDER BY `interval` ASC " +
+                    $"LIMIT 1;");
+                if (result.Count() < 1)
                 {
-                    {
-                        List<Dictionary<string, object>> result = TrackingSettings.ExecuteQuery("SELECT * " +
-                            $"FROM {TrackingSettings.TableName} " +
-                            $"WHERE target_id = {user.Id} " +
-                            $"ORDER BY `interval` ASC " +
-                            $"LIMIT 1;");
-                        if (result.Count() < 1)
-                        {
-                            interval = TrackingSettings.DEFAULT_INTERVAL;
-                        }
-                        else
-                        {
-                            long.TryParse(result[0]["interval"].ToString(), out interval);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
                     interval = TrackingSettings.DEFAULT_INTERVAL;
+                }
+                else
+                {
+                    long.TryParse(result[0]["interval"].ToString(), out interval);
                 }
                 return LOCATION_UPDATED + COMM_SEPARATOR + interval;
             }
@@ -274,11 +263,6 @@ namespace GeofenceServer
                     // not found because the codes get deleted if duplicates are found
                     return NOT_FOUND;
                 }
-                catch (Exception e)
-                {
-                    Trace.TraceWarning(e.Message);
-                    return UNDEFINED_CASE;
-                }
             }
             public static string GetUser(string[] message)
 			{
@@ -307,29 +291,18 @@ namespace GeofenceServer
                 }
                 catch (Exception e)
                 {
-                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.ToString());
                     return NOT_A_TARGET_ID;
                 }
 
-                try
+                TrackingSettings settings = new TrackingSettings()
                 {
-                    TrackingSettings settings = new TrackingSettings()
-                    {
-                        OverseerId = overseerId,
-                        TargetId = targetId
-                    };
-                    settings.LoadUsingAvailableData();
-                    // Interval will be DEFAULT_INTERVAL regardless if it's successfully loaded or not.
-                    interval = settings.Interval;
-                }
-                catch (Exception e)
-                {
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
-                    Trace.TraceError(e.InnerException.Message);
-                    Trace.TraceError(e.InnerException.StackTrace);
-                    interval = TrackingSettings.DEFAULT_INTERVAL;
-                }
+                    OverseerId = overseerId,
+                    TargetId = targetId
+                };
+                settings.LoadUsingAvailableData();
+                // Interval will be DEFAULT_INTERVAL regardless if it's successfully loaded or not.
+                interval = settings.Interval;
 
                 TargetUser targetUser = new TargetUser();
                 targetUser.Id = targetId;
@@ -369,45 +342,21 @@ namespace GeofenceServer
 
                 string id = message[2].Trim();
                 int targetId = int.Parse(id);
-                try
+                TrackingSettings settings = new TrackingSettings()
                 {
-                    TrackingSettings settings = new TrackingSettings()
-                    {
-                        OverseerId = overseerUser.Id,
-                        TargetId = targetId
-                    };
-                    settings.Delete();
-                }
-                catch (Exception e)
+                    OverseerId = overseerUser.Id,
+                    TargetId = targetId
+                };
+                settings.Delete();
+                GeoArea.ExecuteNonQuery($"DELETE FROM {GeoArea.TableName}" +
+                    " WHERE overseer_id = " + overseerUser.Id + " AND " +
+                    "target_id = " + targetId);
+                if (!overseerUser.RemoveTrackedUser(targetId))
                 {
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
-                }
-                try {
-                        GeoArea.ExecuteNonQuery($"DELETE FROM {GeoArea.TableName}" +
-                            " WHERE overseer_id = " + overseerUser.Id + " AND " +
-                            "target_id = " + targetId);
-                }
-                catch (Exception e)
-				{
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
-                }
-                try
-                {
-                    if (!overseerUser.RemoveTrackedUser(targetId))
-                    {
-                        return UNDEFINED_CASE;
-                    }
-                    overseerUser.Save();
-                    return REMOVED_TARGET;
-                }
-                catch (Exception e)
-                {
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
                     return COULD_NOT_REMOVE_TARGET;
                 }
+                overseerUser.Save();
+                return REMOVED_TARGET;
             }
             public static string GetSettings(string[] message)
             {
@@ -438,28 +387,17 @@ namespace GeofenceServer
                 }
                 catch (Exception e)
                 {
-                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.ToString());
                     return NOT_A_TARGET_ID;
                 }
 
-                try
+                TrackingSettings settings = new TrackingSettings()
                 {
-
-                    TrackingSettings settings = new TrackingSettings()
-                    {
-                        OverseerId = overseerId,
-                        TargetId = targetId
-                    };
-                    settings.LoadUsingAvailableData();
-                    return GOT_SETTINGS + COMM_SEPARATOR + settings.Interval;
-                } catch (Exception e)
-				{
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
-                    Trace.TraceError(e.InnerException.Message);
-                    Trace.TraceError(e.InnerException.StackTrace);
-                    return GOT_SETTINGS + COMM_SEPARATOR + TrackingSettings.DEFAULT_INTERVAL;
-                }
+                    OverseerId = overseerId,
+                    TargetId = targetId
+                };
+                settings.LoadUsingAvailableData();
+                return GOT_SETTINGS + COMM_SEPARATOR + settings.Interval;
             }
             public static string ChangeSettings(string[] message)
             {
@@ -491,7 +429,7 @@ namespace GeofenceServer
                 }
                 catch (Exception e)
                 {
-                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.ToString());
                     return NOT_A_TARGET_ID;
                 }
                 try
@@ -500,7 +438,7 @@ namespace GeofenceServer
                 }
                 catch (Exception e)
                 {
-                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.ToString());
                     return NOT_AN_INTERVAL;
                 }
 
@@ -542,7 +480,7 @@ namespace GeofenceServer
                 }
                 catch (Exception e)
                 {
-                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.ToString());
                     return NOT_A_TARGET_ID;
                 }
 
@@ -584,7 +522,7 @@ namespace GeofenceServer
                 }
                 catch (Exception e)
                 {
-                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.ToString());
                     return NOT_A_TARGET_ID;
                 }
                 TargetUser target = new TargetUser();
@@ -594,24 +532,13 @@ namespace GeofenceServer
                 {
                     return NOT_FOUND;
                 }
-                try
+                TrackingSettings settings = new TrackingSettings()
                 {
-                    TrackingSettings settings = new TrackingSettings()
-                    {
-                        OverseerId = overseerId,
-                        TargetId = targetId
-                    };
-                    settings.LoadUsingAvailableData();
-                    interval = settings.Interval;
-                }
-                catch (Exception e)
-                {
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
-                    Trace.TraceError(e.InnerException.Message);
-                    Trace.TraceError(e.InnerException.StackTrace);
-                    interval = TrackingSettings.DEFAULT_INTERVAL;
-                }
+                    OverseerId = overseerId,
+                    TargetId = targetId
+                };
+                settings.LoadUsingAvailableData();
+                interval = settings.Interval;
                 return GOT_TARGET_LOCATION_AND_INTERVAL +
                     COMM_SEPARATOR +
                     LocationHandler.truncateHistoryForTransmission(target.LocationHistory) +
@@ -646,7 +573,7 @@ namespace GeofenceServer
                 }
                 catch (Exception e)
                 {
-                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.ToString());
                     return NOT_A_TARGET_ID;
                 }
 
@@ -684,7 +611,7 @@ namespace GeofenceServer
                 }
                 catch (Exception e)
                 {
-                    Trace.TraceError(e.Message);
+                    Trace.TraceError(e.ToString());
                     return NOT_A_TARGET_ID;
                 }
                 try
@@ -716,8 +643,6 @@ namespace GeofenceServer
                     e is FormatException ||
                     e is OverflowException)
 				{
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
                     return NOT_A_GEOAREA;
                 }
             }
@@ -787,17 +712,19 @@ namespace GeofenceServer
             {
                 try
                 {
-                    // listen for a connection and accept it
                     workerSocket = mainSocket.Accept();
                     if (workerSocket == null)
                     {
                         continue;
                     }
-                    Trace.TraceInformation("\nAccepted connection from: " + workerSocket.RemoteEndPoint);
+
+                    Trace.TraceInformation("Accepted connection from: " + workerSocket.RemoteEndPoint);
+
                     byte[] rawMsg = new byte[BUFFER_SIZE];
-                    // read and check message
                     string message = "";
+
                     int bCount = workerSocket.Receive(rawMsg);
+
                     while (bCount != 0)
                     {
                         message += Encoding.UTF8.GetString(rawMsg);
@@ -807,25 +734,35 @@ namespace GeofenceServer
                         }
                         bCount = workerSocket.Receive(rawMsg);
                     }
+
                     int indexOfNull = message.IndexOf('\0');
                     if (indexOfNull >= 0) {
                         message = message.Remove(indexOfNull, message.Length - indexOfNull);
                     }
+
                     string msg = message.Substring(0, message.IndexOf(END));
-                    // process message and send a response
                     string[] splitMsg = msg.Split(COMM_SEPARATOR);
                     string request = splitMsg[0];
                     string from = splitMsg[1].Split(USER_SEPARATOR)[0];
-                    Trace.TraceInformation("Request: " + request + " from:" + from);
+
+                    Trace.TraceInformation("Request: " + request + " from " + from);
+
                     string response = ProcessRequest(msg);
                     SendResponse(response + END);
+
+                    int lastIndexOfCommSep = response.IndexOf(COMM_SEPARATOR);
+                    if (lastIndexOfCommSep == -1)
+                    {
+                        lastIndexOfCommSep = response.Length;
+                    }
+                    Trace.TraceInformation("Response: " + response.Substring(0, lastIndexOfCommSep));
+
                     workerSocket.Close();
                 }
                 catch (Exception e)
                 {
                     workerSocket.Close();
-                    Trace.TraceError(e.Message);
-                    Trace.TraceError(e.StackTrace);
+                    Trace.TraceError(e.ToString());
                 }
             }
         }

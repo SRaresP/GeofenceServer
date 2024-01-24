@@ -16,26 +16,18 @@ namespace GeofenceServer.Data
 
         static GeoFence()
         {
-            try
-            {
-                string sql = $"CREATE TABLE IF NOT EXISTS {TableName} " +
-                    $"(id BIGINT NOT NULL AUTO_INCREMENT, " +
-                    $"geo_area_id BIGINT NOT NULL, " +
-                    // FLOAT(8,5) => a float type of 8 total bits out of which 5 bits are used after the decimal point.
-                    // Could've used (8,6) for latitude since it only ranges from -90 to 90, but decided to keep it consistent.
-                    $"latitude FLOAT(8,5) NOT NULL, " +
-                    $"longitude FLOAT(8,5) NOT NULL, " +
-                    $"radius_meters INTEGER NOT NULL, " +
-                    $"PRIMARY KEY (id), " +
-                    $"FOREIGN KEY(geo_area_id) REFERENCES geo_area(id)" +
-                    $");";
-                ExecuteNonQuery(sql);
-            }
-            catch (Exception e)
-            {
-                Trace.TraceWarning(e.Message);
-                Trace.TraceWarning(e.StackTrace);
-            }
+            string sql = $"CREATE TABLE IF NOT EXISTS {TableName} " +
+                $"(id BIGINT NOT NULL AUTO_INCREMENT, " +
+                $"geo_area_id BIGINT NOT NULL, " +
+                // FLOAT(8,5) => a float type of 8 total bits out of which 5 bits are used after the decimal point.
+                // Could've used (8,6) for latitude since it only ranges from -90 to 90, but decided to keep it consistent.
+                $"latitude FLOAT(8,5) NOT NULL, " +
+                $"longitude FLOAT(8,5) NOT NULL, " +
+                $"radius_meters INTEGER NOT NULL, " +
+                $"PRIMARY KEY (id), " +
+                $"FOREIGN KEY(geo_area_id) REFERENCES geo_area(id)" +
+                $");";
+            ExecuteNonQuery(sql);
         }
 
         protected override void AddConditionsAndSelects(List<string> conditions, List<string> columnsToSelect)

@@ -20,9 +20,7 @@ public class CryptoHashHelper
         }
         catch(Exception ex)
         {
-            Trace.TraceError("Exception thrown while instantiating crypto provider.\n" +
-                 "Message: " + ex.Message +
-                 "\nStack trace: " + ex.StackTrace);
+            Trace.TraceError(ex.ToString());
         }
         Provider.Key = Convert.FromBase64String(File.ReadAllText(SecretFolderpath + "key.txt"));
         Provider.IV = Convert.FromBase64String(File.ReadAllText(SecretFolderpath + "IV.txt"));
@@ -35,9 +33,7 @@ public class CryptoHashHelper
         }
         catch (Exception ex)
         {
-            Trace.TraceError("Exception thrown while instantiating crypto provider.\n" +
-                 "Message: " + ex.Message +
-                 "\nStack trace: " + ex.StackTrace);
+            Trace.TraceError(ex.ToString());
         }
     }
     public string Encrypt(string text)

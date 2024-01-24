@@ -28,7 +28,8 @@ namespace GeofenceServer.Data
 				}
 				catch (Exception ex)
 				{
-					Trace.TraceError(ex.Message);
+					Dispose();
+					throw ex;
 				}
 				Dispose();
 			}
@@ -43,51 +44,36 @@ namespace GeofenceServer.Data
 		private static CryptoHashHelper Crypto = new CryptoHashHelper();
 		public static void Clear()
 		{
-			try
-			{
-				TargetCode.ExecuteNonQuery($"DELETE FROM {TargetCode.TableName} WHERE 1;");
-			} catch (Exception e)
-			{
-				Trace.TraceError(e.Message);
-			}
+			TargetCode.ExecuteNonQuery($"DELETE FROM {TargetCode.TableName} WHERE 1;");
 		}
 		public static string Get(TargetUser user)
 		{
-			string code = "-1";
-			try
+			TargetCode targetCode1 = new TargetCode()
 			{
-				TargetCode targetCode1 = new TargetCode()
-				{
-					TargetUserId = user.Id
-				};
-				TargetCode[] result = targetCode1.LoadMultipleUsingAvailableData().Cast<TargetCode>().ToArray();
-				foreach (TargetCode targetCode in result)
-				{
-					targetCode.Delete();
-				}
-				string toHash = user.Email + user.NrOfCodeGenerations;
-				code = Crypto.GetHash(toHash).Substring(0, CODE_LENGTH).ToUpper();
-				++user.NrOfCodeGenerations;
-				user.Save();
+				TargetUserId = user.Id
+			};
+			TargetCode[] result = targetCode1.LoadMultipleUsingAvailableData().Cast<TargetCode>().ToArray();
+			foreach (TargetCode targetCode in result)
+			{
+				targetCode.Delete();
+			}
+			string toHash = user.Email + user.NrOfCodeGenerations;
+			string code = Crypto.GetHash(toHash).Substring(0, CODE_LENGTH).ToUpper();
+			++user.NrOfCodeGenerations;
+			user.Save();
 
-				TargetCode newEntry = new TargetCode()
-				{
-					TargetUserId = user.Id,
-					Code = code
-				};
-				newEntry.Save();
-				//1.800.000 miliseconds = 30 minutes
-				DeletionTimer timer = new DeletionTimer(1800000, newEntry);
-				timer.Elapsed += timer.DeleteEntry;
-				timer.AutoReset = false;
-				timer.Start();
-				return code;
-			}
-			catch (Exception e)
+			TargetCode newEntry = new TargetCode()
 			{
-				Trace.TraceError(e.Message);
-				return code;
-			}
+				TargetUserId = user.Id,
+				Code = code
+			};
+			newEntry.Save();
+			//1.800.000 miliseconds = 30 minutes
+			DeletionTimer timer = new DeletionTimer(1800000, newEntry);
+			timer.Elapsed += timer.DeleteEntry;
+			timer.AutoReset = false;
+			timer.Start();
+			return code;
 		}
 		public static long Validate(string code)
 		{
