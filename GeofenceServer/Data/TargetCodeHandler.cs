@@ -99,7 +99,7 @@ namespace GeofenceServer.Data
 			switch (results.Count())
 			{
 				case 0:
-					throw new KeyNotFoundException("User matching passed unique code was not found.");
+					throw new KeyNotFoundException("TargetUser matching passed unique code was not found.");
 				case 1:
 					long id = results[0].TargetUserId;
 					results[0].Delete();
